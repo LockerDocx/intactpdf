@@ -341,3 +341,71 @@ def test_el_appimage_construido_funciona_si_está():
     r = subprocess.run([str(appimage), "doctor"], capture_output=True, text=True,
                        timeout=300)
     assert r.returncode == 0, f"el AppImage no arranca: {r.stdout[-400:]}{r.stderr[-400:]}"
+
+
+# ─────────────────────────── el PATH de los comandos ─────────────────────────
+#
+# `pipx` (y la vía AppImage) dejan los comandos en `~/.local/bin`, que en muchas
+# distribuciones no está en el PATH. El primer mensaje que llegó de una
+# instalación de verdad, en un Ubuntu 26.04, acababa justo con ese aviso. El
+# instalador ahora lo arregla: le pide a `pipx ensurepath` que lo haga, y si no
+# puede, escribe el bloque en `~/.profile` con la carpeta de verdad (no `$HOME/bin`,
+# que es lo que escribía la primera versión).
+#
+# Dos cosas que NO puede hacer, y tienen test porque son las que hacen daño:
+# no tocar el fichero de arranque de quien sólo estaba simulando, y no añadir el
+# bloque dos veces al ejecutarlo dos veces.
+
+def test_simular_dice_que_arreglaría_el_path_pero_no_lo_toca():
+    """Simular no puede escribir en el fichero de arranque del shell.
+
+    Es el mismo error que ya se cometió con la caché de descargas: un modo que
+    dice «esto es lo que haría» y luego hace. Aquí además el daño es en el
+    fichero que lee cada terminal de quien lo ejecuta.
+    """
+    perfil = Path(os.environ.get("HOME", "/tmp")) / ".profile"
+    antes = perfil.read_bytes() if perfil.exists() else None
+    r = _desde_carpeta_vacia("--simular=opensuse-leap", "--si", "--metodo=pipx",
+                             entorno={"INTACTPDF_BASE": "https://ejemplo.invalid/x"})
+    assert r.returncode == 0
+    salida = _plano(r.stdout + r.stderr)
+    assert "al PATH" in salida, "tiene que decir que lo arreglaría"
+    assert "simulado, no se toca nada" in salida
+    despues = perfil.read_bytes() if perfil.exists() else None
+    assert despues == antes, "simular escribió en ~/.profile"
+
+
+def test_el_bloque_del_path_se_escribe_una_sola_vez():
+    """Ejecutarlo dos veces no puede llenar el fichero de bloques.
+
+    Se comprueba sobre la función, no haciendo una instalación entera: una
+    instalación de verdad tarda y necesita red, y lo que puede fallar aquí es la
+    comprobación de si ya estaba, que es texto. El primer intento de esta
+    comprobación era `sed -n "/marca/d"`, que no imprime nada nunca, así que no
+    detectaba nada y escribía el bloque otra vez en cada ejecución.
+    """
+    funcion = _funcion_del_instalador("arreglar_path")
+    assert funcion, "no encuentro arreglar_path en instalar.sh"
+    # Se mira el código, no los comentarios: los comentarios explican el fallo
+    # que se arregló, y nombrarlo forma parte de la explicación.
+    codigo = "\n".join(l for l in funcion.splitlines() if not l.strip().startswith("#"))
+    # La búsqueda tiene que ser por la CARPETA en el perfil, no por la marca: si
+    # lo añadió `pipx ensurepath`, la carpeta está y la marca no.
+    assert 'grep -qF "$PREFIJO/bin"' in codigo, \
+        "hay que buscar la carpeta en el perfil antes de escribir"
+    assert 'PATH="%s/bin:$PATH"' in codigo, \
+        "el PATH tiene que escribirse con el prefijo de verdad"
+    assert '$HOME/bin' not in codigo, \
+        "no se puede escribir $HOME/bin: la carpeta es $PREFIJO/bin"
+    # Y no puede tocar el fichero de arranque cuando sólo se está simulando.
+    assert 'SIMULAR' in codigo, "simular tiene que salir antes de escribir nada"
+
+
+def _funcion_del_instalador(nombre: str) -> str:
+    """El texto de una función del instalador, desde `nombre() {` hasta su `}`."""
+    texto = INSTALADOR.read_text()
+    marca = f"\n{nombre}() {{"
+    if marca not in texto:
+        return ""
+    trozo = texto.split(marca, 1)[1]
+    return trozo.split("\n}\n", 1)[0]

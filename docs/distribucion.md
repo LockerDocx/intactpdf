@@ -329,6 +329,38 @@ o posterior `Adw.MessageDialog` se reimplementó sobre `Adw.Dialog` y su
 `present()` ya no acepta padre, mientras que en la 1.4 el padre era obligatorio.
 Los tres casos están cubiertos en `gui/dialogos.py` y los tres tienen test.
 
+### El PATH, que es el aviso que llega de una instalación de verdad
+
+La primera instalación en un equipo ajeno a este taller —un **Ubuntu 26.04**,
+GTK 4.22.4, libadwaita 1.9.1, PyGObject 3.56.2— funcionó entera, y terminó con un
+aviso repetido dos veces:
+
+```
+! /home/isard/.local/bin no está en el PATH; añádelo o usa la ruta completa
+```
+
+Avisar no arregla nada: quien lo lee no sabe si tiene que hacer algo. `pipx`
+deja los comandos en `~/.local/bin`, que en muchas distribuciones no está en el
+PATH, así que ahora el instalador lo resuelve:
+
+1. le pide a **`pipx ensurepath`** que lo haga, pero sólo si el prefijo es el
+   suyo (`~/.local`): con `--prefijo=` distinto, `ensurepath` escribiría la
+   carpeta equivocada;
+2. y si eso no vale o falla, escribe un bloque en **`~/.profile`** con **la
+   carpeta de verdad**. La primera versión escribía `$HOME/bin`, que no existe
+   —se vio ejecutándolo, no leyéndolo—, y se corregido mirando el prefijo real;
+3. antes de escribir nada busca **la carpeta** en el perfil, no la marca, porque
+   si ya la añadió `ensurepath` volver a escribirla sumaría líneas en cada
+   ejecución. El primer intento de esta comprobación era
+   `sed -n "/marca/d"`, que no imprime nada nunca: no detectaba nada y duplicaba
+   el bloque cada vez;
+4. `--desinstalar` quita el bloque que puso él, y **deja el de pipx**: ese puede
+   estar haciendo falta para otras aplicaciones de pipx del usuario.
+
+Y en modo simulado no se toca nada, ni el fichero de arranque del shell de quien
+lo ejecuta. Es el mismo error que ya se había cometido con la caché de descargas
+—un modo que dice «esto es lo que haría» y luego hace—, así que tiene test.
+
 ### La vía Flatpak, en tres casos
 
 La decisión de usar Flatpak estaba mal de raíz, y no se vio hasta que se ejecutó
@@ -708,7 +740,9 @@ significa que está libre **hoy**: reservarlo es un clic.
 - **El identificador y el nombre definitivos**: los cinco candidatos ya están
   comprobados contra PyPI, GitHub, Flathub y DNS (tabla arriba, `PDFByte` queda
   fuera). Falta **elegir** y, con eso, crear la cuenta y el repositorio.
-- **La firma de los AppImage** con GPG y `appimagetool --sign`.
+- **La firma de los AppImage** con GPG y `appimagetool --sign`. Hoy hay un
+  `.sha256` que viaja por el mismo sitio que el fichero: sirve contra una
+  descarga truncada, no contra quien controle el servidor.
 - **El AppImage con ventana.** Hoy el AppImage lleva solo la consola, porque
   dentro habría que meter la pila entera de GTK (PyGObject compilado contra el
   Python del propio AppImage, GTK 4, libadwaita, pango, cairo...). Es factible y

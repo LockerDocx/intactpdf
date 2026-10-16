@@ -840,6 +840,19 @@ comprobar() {
     fi
 }
 
+quitar_del_perfil() {   # el PATH que añadió arreglar_path(), si lo añadió
+    perfil="$HOME/.profile"
+    [ -f "$perfil" ] || return 0
+    grep -qF "$MARCA_PATH" "$perfil" 2>/dev/null || return 0
+    tmp="$perfil.intactpdf.$$"
+    awk -v marca="$MARCA_PATH" '
+        index($0, marca) { saltar = 4; next }        # la marca y sus tres líneas
+        saltar > 0 { saltar--; next }
+        { print }
+    ' "$perfil" > "$tmp" && mv "$tmp" "$perfil"
+    paso "PATH restaurado en $perfil"
+}
+
 desinstalar() {
     titulo "Quitando $NOMBRE"
     if hay flatpak && flatpak info "$ID_APP" >/dev/null 2>&1; then
@@ -871,6 +884,7 @@ desinstalar() {
                 ojo "$PREFIJO/opt/intactpdf no es de este instalador: no lo toco" ;;
         esac
     fi
+    quitar_del_perfil
     refrescar_caches
     printf '\n  Listo. Los paquetes del sistema (GTK y compañía) siguen puestos;\n'
     printf '  se quitan con el gestor de paquetes si no los quieres.\n\n'
@@ -965,8 +979,82 @@ case "$M" in
     flatpak)  instalar_flatpak ;;
 esac
 
+# ─────────────────────────── el PATH ────────────────────────────────────────
+#
+# pipx deja los dos comandos en `~/.local/bin`, que en muchas distribuciones no
+# está en el PATH. El instalador ya lo avisaba, pero avisar no arregla nada: el
+# primer mensaje de la primera instalación de verdad, en un Ubuntu 26.04, fue
+# justo ese aviso, y quien lo lee no sabe si tiene que hacer algo. Ahora se
+# ofrece arreglarlo, y con `--si` se hace.
+
+MARCA_PATH="# IntactPDF: PATH añadido por su instalador"
+
+arreglar_path() {
+    case ":$PATH:" in
+        *":$PREFIJO/bin:"*) return 0 ;;    # ya está: no hay nada que hacer
+    esac
+    [ -d "$PREFIJO/bin" ] || return 0      # si no hay comandos, qué vamos a añadir
+
+    if [ -n "$SIMULAR" ]; then
+        # Simular no toca NADA del sistema, y menos aún el fichero de arranque
+        # del shell de quien lo ejecuta. Se dice lo que haría y se sigue.
+        paso "añadiría $PREFIJO/bin al PATH (simulado, no se toca nada)"
+        return 0
+    fi
+
+    # Con `--si` se hace sin preguntar: quien pide «instalar y ya» quiere que
+    # funcione, no un aviso al final. Sin `--si`, se pregunta.
+    if [ "$AUTOINSTALAR" != "1" ]; then
+        printf '    %s/bin no está en el PATH. ¿Lo añado a %s? [s/N] ' \
+            "$PREFIJO" "$HOME/.profile"
+        read -r r || r="n"
+        case "$r" in s|S|si|sí|y|Y) ;; *) ojo "no se toca el PATH; usa $PREFIJO/bin/intactpdf" ; return 0 ;; esac
+    fi
+
+    # Primero se le pide a pipx, que es quien sabe dónde pone las cosas y qué
+    # ficheros de arranque usa cada shell. Sólo vale si el prefijo es el suyo:
+    # `pipx ensurepath` añade siempre SU carpeta (~/.local/bin), así que con un
+    # `--prefijo=` distinto escribiría la ruta equivocada.
+    if hay pipx && [ "$PREFIJO" = "$HOME/.local" ]; then
+        if pipx ensurepath ${PIPX_FUERZA:-} >/dev/null 2>&1; then
+            hecho "$PREFIJO/bin añadido al PATH con «pipx ensurepath»"
+            AVISO_PATH_NUEVO="$PREFIJO/bin"
+            return 0
+        fi
+    fi
+
+    # Y si no, se hace a mano en ~/.profile, que es el fichero que leen los
+    # shells de entrada en casi todas las distribuciones. Con una marca, para
+    # poder borrarlo desde `--desinstalar` y para no añadirlo dos veces.
+    perfil="$HOME/.profile"
+    # Ya está, venga de donde venga: puede haberlo puesto una ejecución anterior
+    # de este instalador, o `pipx ensurepath` en la vía de pipx. Se busca la
+    # CARPETA, no la marca, porque lo que importa es que quede en el PATH — y si
+    # se añadiera otra vez, se sumarían líneas cada vez que alguien lo ejecute.
+    if [ -f "$perfil" ] && grep -qF "$PREFIJO/bin" "$perfil" 2>/dev/null; then
+        hecho "el PATH ya estaba configurado en $perfil"
+        AVISO_PATH_NUEVO="$PREFIJO/bin"
+        return 0
+    fi
+    {
+        printf '\n%s\n' "$MARCA_PATH"
+        # Las rutas de verdad, no `$HOME` a secas: el prefijo puede ser otro
+        # (--prefijo=), y la primera versión escribía `$HOME/bin`, que no existe.
+        printf 'case ":$PATH:" in\n'
+        printf '    *":%s/bin:"*) ;;\n' "$PREFIJO"
+        printf '    *) PATH="%s/bin:$PATH" ;;\n' "$PREFIJO"
+        printf 'esac\nexport PATH\n'
+    } >> "$perfil" || { ojo "no se pudo escribir en $perfil"; return 0; }
+    hecho "$PREFIJO/bin añadido al PATH en $perfil"
+    AVISO_PATH_NUEVO="$PREFIJO/bin"
+}
+
+AVISO_PATH_NUEVO=""
 refrescar_caches
 comprobar
+# También la vía AppImage deja su lanzador en $PREFIJO/bin: sin PATH, el mismo
+# problema con otro nombre.
+case "$M" in pipx|pip3|appimage) arreglar_path ;; esac
 
 titulo "Hecho"
 case "$M" in
@@ -977,7 +1065,12 @@ case "$M" in
               printf '    Consola:  %s/bin/intactpdf doctor\n' "$PREFIJO"
               case ":$PATH:" in
                   *":$PREFIJO/bin:"*) ;;
-                  *) ojo "$PREFIJO/bin no está en el PATH; añádelo o usa la ruta completa" ;;
+                  *) if [ -n "$AVISO_PATH_NUEVO" ]; then
+                         ojo "se ha añadido al PATH: abre un terminal nuevo (o ejecuta"
+                         ojo "«. $HOME/.profile») para poder escribir «intactpdf» a secas"
+                     else
+                         ojo "$PREFIJO/bin no está en el PATH; añádelo o usa la ruta completa"
+                     fi ;;
               esac ;;
 esac
 printf '\n'

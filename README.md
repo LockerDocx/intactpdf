@@ -43,6 +43,11 @@ Opciones útiles: `--metodo=flatpak|pipx|appimage`, `--si` (sin preguntar),
 `--solo-deps` (solo lo que falta para la ventana), `--desinstalar`, y
 `--simular=opensuse-leap` para ver qué haría en otro sistema sin tenerlo delante.
 
+Al terminar, si `~/.local/bin` no estaba en el PATH, **lo añade** (con
+`pipx ensurepath`, o en `~/.profile`), porque es donde pipx y el AppImage dejan
+los comandos: en la primera instalación en un equipo ajeno, el único cabo suelto
+fue justo ese aviso. Se ve en un terminal nuevo, o con `. ~/.profile`.
+
 ### Con una línea, desde una URL
 
 `instalar.sh` funciona **como fichero suelto**: se puede bajar de cualquier sitio
@@ -208,7 +213,7 @@ Las cinco fases del MVP están implementadas y medidas (informes `01`–`07`).
 | | |
 |---|---|
 | corpus | 12 PDFs, 16 páginas |
-| tests unitarios | 104, 0 fallos (GUI 29, instalador 16) |
+| tests unitarios | 106, 0 fallos (GUI 29, instalador 18) |
 | casos de aceptación | 19/19, 0 píxeles fuera, prefijo intacto 19/19 |
 | geometría contra pdfium | 16/16 páginas |
 | Flatpak | construido y probado dentro del sandbox, ventana incluida |
