@@ -993,14 +993,21 @@ arreglar_path() {
     case ":$PATH:" in
         *":$PREFIJO/bin:"*) return 0 ;;    # ya está: no hay nada que hacer
     esac
-    [ -d "$PREFIJO/bin" ] || return 0      # si no hay comandos, qué vamos a añadir
 
     if [ -n "$SIMULAR" ]; then
         # Simular no toca NADA del sistema, y menos aún el fichero de arranque
         # del shell de quien lo ejecuta. Se dice lo que haría y se sigue.
+        #
+        # Esta comprobación va ANTES de mirar si existe la carpeta, y no después:
+        # al simular se finge que la instalación ha funcionado, así que la
+        # carpeta existirá. Mirándola antes, el resultado dependía de si la
+        # máquina donde se prueba tenía ya `~/.local/bin` —en el CI lo tiene— y
+        # la simulación dejaba de decir la verdad.
         paso "añadiría $PREFIJO/bin al PATH (simulado, no se toca nada)"
         return 0
     fi
+
+    [ -d "$PREFIJO/bin" ] || return 0      # sin comandos, qué vamos a añadir
 
     # Con `--si` se hace sin preguntar: quien pide «instalar y ya» quiere que
     # funcione, no un aviso al final. Sin `--si`, se pregunta.

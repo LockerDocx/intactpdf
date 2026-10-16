@@ -362,11 +362,20 @@ def test_simular_dice_que_arreglaría_el_path_pero_no_lo_toca():
     Es el mismo error que ya se cometió con la caché de descargas: un modo que
     dice «esto es lo que haría» y luego hace. Aquí además el daño es en el
     fichero que lee cada terminal de quien lo ejecuta.
+
+    Y tiene que decir que lo arreglaría **aunque `~/.local/bin` ya esté en el
+    PATH**, que es lo que pasa en el CI: al simular se finge la instalación
+    entera, así que finge también que la carpeta será nueva.
     """
     perfil = Path(os.environ.get("HOME", "/tmp")) / ".profile"
     antes = perfil.read_bytes() if perfil.exists() else None
+    # El PATH se controla a propósito: si `~/.local/bin` ya estuviera en él, el
+    # instalador no tendría nada que arreglar y no diría nada. En el CI lo está
+    # (los runners lo añaden), así que la primera versión de esta prueba pasaba
+    # aquí y fallaba allí por el entorno, no por el programa.
     r = _desde_carpeta_vacia("--simular=opensuse-leap", "--si", "--metodo=pipx",
-                             entorno={"INTACTPDF_BASE": "https://ejemplo.invalid/x"})
+                             entorno={"INTACTPDF_BASE": "https://ejemplo.invalid/x",
+                                      "PATH": "/usr/local/bin:/usr/bin:/bin"})
     assert r.returncode == 0
     salida = _plano(r.stdout + r.stderr)
     assert "al PATH" in salida, "tiene que decir que lo arreglaría"
