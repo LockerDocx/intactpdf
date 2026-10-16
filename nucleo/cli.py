@@ -35,7 +35,7 @@ from .alinear_texto import alinear, chars_de_pagina
 from .editar import borrar_objeto, escalar_objeto, mover_objeto
 from .editar_texto import plan_editar_texto
 from .fuentes import resolver_fuentes
-from .guardar import guardar_pagina_editada
+from .guardar import ErrorGuardado, guardar_pagina_editada
 from .objetos import Imagen, Sombreado, TextoRun, Vector, extraer_objetos
 
 # Códigos de salida: distinguir "no se pudo" de "no se debe" importa en un
@@ -54,6 +54,15 @@ class Documento:
         self.ruta = ruta
         self.num_pagina = num_pagina
         self.pdf = pikepdf.open(str(ruta))
+        if self.pdf.is_encrypted:
+            # Se comprueba AL ABRIR y no al guardar: es más barato decirlo antes
+            # de que nadie trabaje, y en la ventana evita llegar a pintar una
+            # vista previa que saldría en blanco.
+            self.pdf.close()
+            raise SystemExit(
+                f"{ruta.name}: el documento está cifrado, así que no se puede "
+                f"editar sin romperlo (el cifrado todavía no se conserva al "
+                f"escribir). El original no se ha tocado.")
         if not (0 <= num_pagina < len(self.pdf.pages)):
             raise SystemExit(f"la página {num_pagina} no existe "
                              f"(el documento tiene {len(self.pdf.pages)})")
@@ -671,7 +680,21 @@ def main(argv=None) -> int:
     try:
         return args.func(args)
     except SystemExit as e:
+        # `SystemExit` con texto es la forma corta de decir «esto no se puede
+        # hacer, y este es el motivo»: Python sólo lo imprime si nadie lo
+        # captura, y aquí se captura, así que se imprime a mano. Antes esta
+        # línea hacía `int(e.code)`, que con un texto revienta con un ValueError
+        # encima del mensaje bueno.
+        if isinstance(e.code, str):
+            print(f"\n  {e.code}\n", file=sys.stderr)
+            return ERROR
         return int(e.code or 0)
+    except ErrorGuardado as e:
+        # Un fallo al guardar es lo más importante que puede decir este
+        # programa: no se ha escrito nada y hay que explicar por qué, sin
+        # volcar una traza de Python encima de quien lo está leyendo.
+        print(f"\n  NO se ha guardado: {e}\n", file=sys.stderr)
+        return ERROR
     except FileNotFoundError as e:
         print(f"  no existe el fichero: {e.filename}", file=sys.stderr)
         return ERROR

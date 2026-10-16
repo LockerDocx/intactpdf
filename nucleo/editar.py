@@ -137,6 +137,78 @@ def edicion_borrar(contenido: ContenidoPagina, objeto: Objeto,
     return Edicion(inicio, fin, b" " * (fin - inicio))
 
 
+# Operadores cuyo efecto forma parte del ESTADO GRÁFICO y que, por lo tanto, se
+# pierden al cerrar un `q ... Q`. El importante es `Tf` (la fuente): el estado de
+# texto es parte del estado gráfico (especificación PDF, §9.3).
+OPS_ESTADO_TEXTO = ("Tf", "Tc", "Tw", "Tz", "TL", "Ts", "Tr")
+
+
+def _dentro_de_texto(contenido: ContenidoPagina, offset: int) -> bool:
+    """¿Este punto del stream está entre un `BT` y su `ET`?"""
+    profundidad = 0
+    for ins in contenido.instrucciones:
+        if ins.inicio >= offset:
+            break
+        if ins.op == "BT":
+            profundidad += 1
+        elif ins.op == "ET":
+            profundidad = max(0, profundidad - 1) - 1 if False else profundidad - 1
+            profundidad = max(0, profundidad)
+    return profundidad > 0
+
+
+def _estado_de_texto(contenido: ContenidoPagina, desde: int, hasta: int) -> bytes:
+    """El estado de texto que hay que REPETIR después de cerrar un `q ... Q`.
+
+    Se mira hasta el FINAL de la región envuelta, no hasta su principio: lo que
+    hay que reponer es el estado que el documento tenía AL SALIR de la región.
+    Si se mirara el principio no se repondría nada (el objeto suele empezar
+    precisamente poniendo la fuente) y el resto de la página se quedaría sin
+    ella. Ese fue exactamente el segundo error de este mismo arreglo.
+
+    Esto no es una precaución: es un fallo que se veía en documentos reales. El
+    estado de texto —la fuente sobre todo— forma parte del estado gráfico, así
+    que un `Q` lo devuelve al valor que tenía antes del `q`. En un PDF que pone
+    la fuente UNA vez al principio y luego escribe todo el texto sin volver a
+    ponerla (lo normal en un documento generado por una herramienta seria), al
+    cerrar el `q ... Q` en medio del texto el resto de la página se queda sin
+    fuente, y por lo tanto **sin dibujar**: se ve el título desaparecer.
+
+    Se descubrió con un PDF de 2.882 páginas del Gobierno de EE. UU.: la
+    edición era correcta, el prefijo estaba intacto, qpdf no decía nada nuevo y
+    el fichero abría bien... y toda la portada aparecía en blanco menos el
+    escudo. Al medir el orden de las cosas en el stream se vio el `Q` en medio
+    de un objeto de texto con la fuente puesta 40.000 bytes antes.
+
+    Devuelve b"" cuando el punto no está dentro de un objeto de texto, que es lo
+    que pasa con imágenes, vectores y con la mayoría de las ediciones.
+    """
+    if not _dentro_de_texto(contenido, desde):
+        return b""
+    ultimo: dict[str, list] = {}
+    for ins in contenido.instrucciones:
+        if ins.inicio >= hasta:
+            break
+        if ins.op in OPS_ESTADO_TEXTO:
+            ultimo[ins.op] = ins.operandos
+    if not ultimo:
+        return b""
+    trozos = [b"\n"]
+    for op in OPS_ESTADO_TEXTO:          # Tf primero: sin fuente no se dibuja nada
+        if op not in ultimo:
+            continue
+        operandos = []
+        for v in ultimo[op]:
+            if isinstance(v, str):
+                operandos.append(f"/{v}")
+            elif isinstance(v, float):
+                operandos.append(f"{v:g}")
+            else:
+                operandos.append(str(v))
+        trozos.append(" ".join(operandos + [op]).encode("latin-1") + b"\n")
+    return b"".join(trozos)
+
+
 def edicion_mover(contenido: ContenidoPagina, objeto: Objeto,
                   dx: float, dy: float) -> list[Edicion]:
     """Envuelve el objeto en `q <matriz> cm ... Q`.
@@ -156,7 +228,7 @@ def edicion_mover(contenido: ContenidoPagina, objeto: Objeto,
     m = matriz_en_espacio_local(objeto, t)
     return [
         Edicion(inicio, inicio, _cm(m)),
-        Edicion(fin, fin, b"\nQ\n"),
+        Edicion(fin, fin, b"\nQ\n" + _estado_de_texto(contenido, inicio, fin)),
     ]
 
 
@@ -177,7 +249,7 @@ def edicion_escalar(contenido: ContenidoPagina, objeto: Objeto,
     m = matriz_en_espacio_local(objeto, t)
     return [
         Edicion(inicio, inicio, _cm(m)),
-        Edicion(fin, fin, b"\nQ\n"),
+        Edicion(fin, fin, b"\nQ\n" + _estado_de_texto(contenido, inicio, fin)),
     ]
 
 

@@ -113,10 +113,10 @@
       "px_totales": 2005644,
       "empieza_por_el_original": true,
       "bytes_original": 384157,
-      "bytes_anadidos": 545,
+      "bytes_anadidos": 549,
       "detalle": [
         "mover texto[0] +(0.0,-60.0) (73.76399993896484, 756.2739868164062, 545.4359130859375, 773.8779907226562) -> (73.76399993896484, 696.2739868164062, 545.4359130859375, 713.8779907226562)",
-        "guardado incremental: 545 bytes añadidos de 384157",
+        "guardado incremental: 549 bytes añadidos de 384157",
         "objetos redefinidos: [(4, 0)]"
       ]
     },
@@ -130,10 +130,10 @@
       "px_totales": 2005644,
       "empieza_por_el_original": true,
       "bytes_original": 28417,
-      "bytes_anadidos": 2446,
+      "bytes_anadidos": 2457,
       "detalle": [
         "mover texto[5] +(40.0,0.0) (73.27400207519531, 607.3090209960938, 739.3989868164062, 621.8690185546875) -> (113.27400207519531, 607.3090209960938, 779.3989868164062, 621.8690185546875)",
-        "guardado incremental: 2446 bytes añadidos de 28417",
+        "guardado incremental: 2457 bytes añadidos de 28417",
         "objetos redefinidos: [(11, 0)]"
       ]
     },
@@ -290,10 +290,10 @@
       "px_totales": 2005644,
       "empieza_por_el_original": true,
       "bytes_original": 22755,
-      "bytes_anadidos": 569,
+      "bytes_anadidos": 575,
       "detalle": [
         "mover texto[3] +(25.0,30.0) (106.924072265625, 300.53900146484375, 341.9791259765625, 439.2266845703125) -> (131.924072265625, 330.53900146484375, 366.9791259765625, 469.2266845703125)",
-        "guardado incremental: 569 bytes añadidos de 22755",
+        "guardado incremental: 575 bytes añadidos de 22755",
         "objetos redefinidos: [(11, 0)]"
       ]
     },
@@ -307,10 +307,10 @@
       "px_totales": 2005644,
       "empieza_por_el_original": true,
       "bytes_original": 22755,
-      "bytes_anadidos": 571,
+      "bytes_anadidos": 577,
       "detalle": [
         "escalar texto[4] x(1.4,1.4) alrededor de (208,527)",
-        "guardado incremental: 571 bytes añadidos de 22755",
+        "guardado incremental: 577 bytes añadidos de 22755",
         "objetos redefinidos: [(11, 0)]"
       ]
     },

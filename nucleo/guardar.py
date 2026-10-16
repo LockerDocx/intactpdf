@@ -213,6 +213,101 @@ def escribir_incremental(
 
 
 # ---------------------------------------------------------------------------
+# La comprobación que de verdad importa: ¿se ve lo que se ha guardado?
+# ---------------------------------------------------------------------------
+
+def esta_cifrado(ruta: str | Path) -> bool:
+    """¿El documento va cifrado?
+
+    Importa mucho más de lo que parece: un documento cifrado se lee sin
+    problema si la contraseña está vacía (pikepdf lo abre igual), pero el
+    guardado incremental escribe el stream nuevo EN CLARO dentro de un fichero
+    que dice estar cifrado. Un lector que respete el cifrado descifra esos bytes
+    y obtiene basura: la página se ve en blanco. Se descubrió con un PDF de
+    prueba que se distribuye cifrado con contraseña vacía, y el resultado era un
+    fichero que abría... sin nada dentro.
+
+    Conservar el cifrado al escribir es un pendiente (hay que cifrar el stream
+    nuevo con la misma clave). Hasta entonces, mejor decirlo que escribir un
+    fichero roto.
+    """
+    with pikepdf.open(str(ruta)) as pdf:
+        return bool(pdf.is_encrypted)
+
+
+def _tinta(ruta: str | Path, num_pagina: int, escala: float = 0.3) -> float:
+    """Qué proporción de la página tiene algo dibujado (0.0 a 1.0).
+
+    Se muestrean los píxeles del búfer de pdfium, sin numpy ni Pillow: los dos
+    son dependencias del arnés de pruebas, no del programa, y el programa tiene
+    que funcionar con lo mínimo (pikepdf, pypdfium2 y fontTools).
+
+    A 0.3 de escala una página A4 son unos 44.000 píxeles, y el muestreo lee
+    uno de cada diez: 4.400 lecturas por página. Suficiente para distinguir «hay
+    página» de «no hay nada», que es lo único que se pregunta aquí.
+    """
+    import pypdfium2 as pdfium
+    doc = pdfium.PdfDocument(str(ruta))
+    try:
+        if num_pagina >= len(doc):
+            return 0.0
+        bmp = doc[num_pagina].render(scale=escala)
+        ancho, alto, canales, paso = bmp.width, bmp.height, bmp.n_channels, bmp.stride
+        datos = bytes(bmp.buffer)
+    finally:
+        doc.close()
+    if not ancho or not alto:
+        return 0.0
+    con_algo, total = 0, 0
+    for y in range(0, alto, 3):
+        base = y * paso
+        for x in range(0, ancho, 3):
+            i = base + x * canales
+            # Blanco = 255 en los tres canales. Todo lo demás es tinta.
+            if datos[i] < 250 or datos[i + 1] < 250 or datos[i + 2] < 250:
+                con_algo += 1
+            total += 1
+    return con_algo / total if total else 0.0
+
+
+def verificar_que_se_ve(ruta_original: str | Path, ruta_salida: str | Path,
+                        num_pagina: int) -> str | None:
+    """Comprueba que la página editada sigue teniendo algo dibujado.
+
+    Devuelve el motivo si el guardado no se puede dar por bueno, o None si está
+    bien. Es una comprobación de humo, no de fidelidad: no mira si el resto de
+    la página sigue igual (eso lo garantiza el prefijo intacto), mira lo único
+    que el prefijo no puede garantizar: que un lector REAL siga viendo la
+    página. Son dos cosas distintas, y la diferencia se descubrió así:
+
+    Probando con PDFs reales de servidores públicos (ver tools/prueba_real.py),
+    un fichero linearizado con tabla de referencias híbrida —de los que
+    producen algunos programas con «vista web rápida»— se guardaba con el
+    prefijo intacto, el objeto de contenido correcto y el fichero válido para
+    poppler... y pdfium, que es el motor que usa nuestra propia vista previa,
+    lo pintaba EN BLANCO. El fichero era correcto y no se veía, que para un
+    editor es lo mismo que estar roto: quien lo abriera vería una página vacía
+    y guardaría encima creyendo que estaba bien.
+
+    La comprobación es tan poco estricta a propósito: sólo se niega cuando la
+    página original tenÍa contenido y la guardada no tiene casi nada. Un cambio
+    legítimo (borrar el último objeto de una página, por ejemplo) cabe dentro de
+    ese margen la mayor parte de las veces; mentir sobre lo guardado, no.
+    """
+    try:
+        antes = _tinta(ruta_original, num_pagina)
+        despues = _tinta(ruta_salida, num_pagina)
+    except Exception as e:      # sin pdfium no se puede comprobar: se dice y se sigue
+        return f"no se pudo comprobar si la página se ve ({type(e).__name__}: {e})"
+    if antes >= 0.01 and despues < antes * 0.1:
+        return (f"la página {num_pagina + 1} tenía contenido "
+                f"({antes * 100:.1f} % de la superficie) y en el fichero guardado "
+                f"casi no queda ninguno ({despues * 100:.1f} %): un lector la ve "
+                f"en blanco")
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Puente desde el editor
 # ---------------------------------------------------------------------------
 
@@ -232,19 +327,61 @@ def guardar_pagina_editada(
     num_pagina: int,
     contenidos: list[bytes],
     objetos_extra: dict[tuple[int, int], bytes] | None = None,
+    verificar: bool = True,
 ) -> InformeGuardado:
     """Guarda una página con sus streams de contenido reemplazados.
 
     Se redefinen los MISMOS objetos que ya existían, así que el objeto de página,
     los recursos, las fuentes y todo lo demás no se tocan en absoluto.
+
+    Cuando se pasa **un** contenido y la página tiene varios streams (lo normal
+    en un PDF de verdad), el contenido entero va al primero y los demás se
+    vacían. Es correcto porque el contenido de una página es la CONCATENACIÓN de
+    sus streams (especificación PDF, §7.8.2) y el editor trabaja justamente sobre
+    esa concatenación: al vaciar los demás, la concatenación vuelve a ser
+    exactamente lo editado, y el array `/Contents` del objeto de página —y el
+    objeto de página entero— siguen sin tocarse.
+
+    Antes esto era un error que decía «la página tiene 8 streams de contenido y
+    se han pasado 1 contenidos», y dejaba fuera casi todos los PDFs reales. Los
+    que lo destaparon, probando con documentos de servidores públicos: el
+    formulario 1040 del IRS (8 streams por página, 229 campos de formulario), un
+    artículo de arXiv (2) y un libro de 2.882 páginas de govinfo (8).
     """
     with pikepdf.open(str(ruta_original)) as pdf:
         refs = num_objeto_stream_de_pagina(pdf.pages[num_pagina])
+    if len(contenidos) == 1 and len(refs) > 1:
+        contenidos = [contenidos[0]] + [b""] * (len(refs) - 1)
     if len(refs) != len(contenidos):
         raise ErrorGuardado(
             f"la página tiene {len(refs)} streams de contenido y se han pasado "
             f"{len(contenidos)} contenidos")
+    if esta_cifrado(ruta_original):
+        raise ErrorGuardado(
+            "el documento está cifrado y todavía no se sabe conservar el cifrado "
+            "al editar. Escribir el contenido sin cifrar dentro de un fichero que "
+            "dice estar cifrado deja un documento que abre en blanco, así que no "
+            "se escribe nada. Trabaja sobre una copia sin cifrado (por ejemplo, "
+            "abriéndolo e imprimiéndolo a PDF desde el visor) o espera a que el "
+            "cifrado sea un pendiente resuelto.")
+
     objetos = {ref: cuerpo_stream(datos) for ref, datos in zip(refs, contenidos)}
     if objetos_extra:
         objetos.update(objetos_extra)
-    return escribir_incremental(ruta_original, ruta_salida, objetos)
+    informe = escribir_incremental(ruta_original, ruta_salida, objetos)
+    if verificar:
+        # El prefijo intacto garantiza que nada más ha cambiado, pero NO
+        # garantiza que un lector real vea la página: hay estructuras de PDF en
+        # las que el guardado incremental da un fichero válido que pdfium pinta
+        # en blanco. Se comprueba antes de dar el guardado por bueno, y si no se
+        # ve, no se deja el fichero a medias: se borra y se dice por qué.
+        problema = verificar_que_se_ve(ruta_original, ruta_salida, num_pagina)
+        if problema:
+            Path(ruta_salida).unlink(missing_ok=True)
+            raise ErrorGuardado(
+                f"{problema}. El fichero guardado se ha borrado: es preferible "
+                f"no escribir nada a escribir algo que no se ve. Pasa con "
+                f"documentos linearizados o con tabla de referencias híbrida, "
+                f"que es una limitación conocida de este editor (está en la "
+                f"lista de pendientes). El original no se ha tocado.")
+    return informe

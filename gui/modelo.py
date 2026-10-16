@@ -30,7 +30,7 @@ from nucleo.editar import (borrar_objeto, escalar_objeto, mover_objeto)
 from nucleo.editar_texto import escala_de_run, plan_editar_texto
 from nucleo.fuentes import resolver_fuentes
 from nucleo.geometria import Caja
-from nucleo.guardar import guardar_pagina_editada
+from nucleo.guardar import ErrorGuardado, guardar_pagina_editada
 from nucleo.objetos import ContenidoPagina, Objeto, extraer_objetos
 
 
@@ -86,6 +86,14 @@ class Sesion:
     def _recargar(self) -> None:
         """Relee el stream de la página y vuelve a extraer y alinear objetos."""
         with pikepdf.open(str(self.ruta)) as pdf:
+            if pdf.is_encrypted:
+                # Se rechaza AL ABRIR, no al pintar: un error dentro del bucle
+                # de dibujo de GTK no se ve, cuelga la ventana hasta el tiempo
+                # límite y no dice nada. Aquí se avisa y no se abre.
+                raise ErrorGuardado(
+                    f"{self.ruta.name}: el documento está cifrado, así que no se "
+                    f"puede editar sin romperlo (el cifrado todavía no se "
+                    f"conserva al escribir). El original no se toca.")
             if self.num_pagina >= len(pdf.pages):
                 self.num_pagina = 0
             pagina = pdf.pages[self.num_pagina]
@@ -362,8 +370,12 @@ class Sesion:
             os.close(fd)
             tmp = Path(nombre)
             try:
+                # Sin verificar: esto es para la VISTA PREVIA, que se rehace
+                # con cada clic. La comprobación de que la página se ve se hace
+                # al guardar de verdad, que es cuando importa y se paga una vez.
                 guardar_pagina_editada(self.ruta, tmp, self.num_pagina,
-                                       [self.datos], self.objetos_nuevos)
+                                       [self.datos], self.objetos_nuevos,
+                                       verificar=False)
                 self._cache_bytes = tmp.read_bytes()
             finally:
                 tmp.unlink(missing_ok=True)

@@ -8,7 +8,14 @@ que cambian se añaden al final como actualización incremental (especificación
 PDF, §7.5.6). Si el prefijo del fichero es idéntico al original, es imposible que
 haya cambiado cualquier otra cosa.
 
-Medido sobre un corpus de **12 PDFs** hechos para romper editores: **19
+Y hay una segunda promesa, que se aprendió con documentos de verdad: antes de dar
+  un fichero por bueno, IntactPDF comprueba que la página **se vea**. El prefijo
+  intacto garantiza que nada más ha cambiado; no garantiza que un lector siga
+  viendo la página. Cuando el original tiene contenido y la salida no, se borra lo
+  escrito y se explica por qué. Un documento cifrado, por ejemplo, se rechaza en
+  vez de dejar un fichero que abre en blanco.
+
+  Medido sobre un corpus de **12 PDFs** hechos para romper editores: **19
 ediciones** (borrar un vector, mover y redimensionar una imagen CMYK, cambiar un
 texto, escalar texto rotado) con **0 píxeles alterados fuera de la región
 editada**, y la geometría de la página comprobada con **pdfium**, un motor que no
@@ -213,7 +220,7 @@ Las cinco fases del MVP están implementadas y medidas (informes `01`–`07`).
 | | |
 |---|---|
 | corpus | 12 PDFs, 16 páginas |
-| tests unitarios | 106, 0 fallos (GUI 29, instalador 18) |
+| tests unitarios | 112, 0 fallos (GUI 29, instalador 19) |
 | casos de aceptación | 19/19, 0 píxeles fuera, prefijo intacto 19/19 |
 | geometría contra pdfium | 16/16 páginas |
 | Flatpak | construido y probado dentro del sandbox, ventana incluida |
