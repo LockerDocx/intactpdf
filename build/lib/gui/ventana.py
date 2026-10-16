@@ -1125,6 +1125,55 @@ class Ventana(Adw.ApplicationWindow):
 
 
 class Aplicacion(Adw.Application):
+    """La aplicación GTK. **Una sola por proceso, y un solo `run()`.**
+    Cada ventana no lleva su aplicación: la ventana se construye con la que ya
+    existe (`Ventana(app, sesion)`). Las dos reglas son de GLib, no nuestras, y
+    las dos se pagan con un fallo silencioso en vez de con una excepción:
+
+    - crear una segunda `Aplicacion` con el mismo identificador y llamar a
+      `register()` **lanza** `GLib.Error: An object is already exported…`, donde
+      hay bus de sesión (o sea, en cualquier escritorio de verdad); sin bus
+      devuelve False y no pasa nada, así que el fallo no se ve donde se prueba;
+    - llamar a `run()` **dos veces en el proceso** no abre nada: imprime
+      «Failed to register: An object is already exported…» y devuelve 1. Medido:
+      con el mismo objeto y con uno nuevo, y con y sin bus de sesión.
+
+    Lo destapó el CI, que ejecuta las pruebas y las capturas en un proceso: el
+    primer intento se arregló sólo en parte porque en el entorno de pruebas no
+    había bus de sesión y el fallo era invisible. Las capturas se generan ahora
+    una por proceso (`tools/capturas_gui.py`), y las pruebas comparten la suya.
+    """
+
+    # Registrar una aplicación es algo que sólo se puede hacer UNA VEZ por
+    # proceso y por identificador. Aquí se recuerda si ya se hizo, para poder
+    # contestar sin depender de lo que diga GLib.
+    _registrada = False
+
+    def registrar(self) -> bool:
+        """Registrar en el bus de sesión, sin reventar si ya había una.
+
+        Registrar sirve para que abrir un PDF desde el gestor de ficheros mande
+        el documento a la ventana que ya está abierta en vez de abrir otra. Es
+        opcional: sin registro, la aplicación funciona igual, sólo que sin eso.
+
+        **Medido, y sólo se ve donde hay bus de sesión**: la segunda vez que se
+        registra el mismo identificador en un proceso, `Gio.Application.register()`
+        no devuelve False, sino que **lanza** `GLib.Error: An object is already
+        exported for the interface org.gtk.Application`. Sin bus de sesión
+        (contenedor, Xvfb pelado) devuelve False y no pasa nada, así que el fallo
+        era invisible en el sitio donde se probaba y aparecía en cualquier
+        escritorio de verdad, que es donde hay bus. Lo destapó el CI: tres pruebas
+        de la ventana y, a partir de la segunda captura, la herramienta que genera
+        las capturas para Flathub.
+        """
+        if Aplicacion._registrada:
+            return False
+        try:
+            hecho = bool(self.register(None))
+        except GLib.Error:
+            hecho = False
+        Aplicacion._registrada = Aplicacion._registrada or hecho
+        return hecho
     def __init__(self, sesion: Sesion, captura: str | None = None,
                  al_abrir=None):
         super().__init__(application_id=APP_ID,

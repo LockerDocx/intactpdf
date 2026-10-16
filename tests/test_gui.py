@@ -273,13 +273,20 @@ def test_mover_texto_deja_la_caja_donde_toca():
 # ---------------------------------------------------------------------------
 
 def test_la_ventana_se_construye_y_se_dibuja():
-    """Arranca de verdad, pinta la página y se deja capturar.
+    """La ventana se construye, se dibuja y produce una imagen con contenido.
 
-    Se hace sin escritorio con un servidor X virtual. La captura no es un
-    adorno: si la ventana se construye pero no dibuja nada, esto lo detecta —
-    una captura de un solo color es una ventana rota.
+    **Se hace en otro proceso, y no es un capricho**: `Gio.Application.run()`
+    sólo se puede llamar una vez por proceso (la segunda vez no dibuja nada y
+    sale con 1), así que si esta prueba corriera dentro del proceso de las demás,
+    dependería de qué otras pruebas se hayan ejecutado antes. Ya pasó: pasaba
+    sola y fallaba al ejecutar el fichero entero, porque otra prueba anterior
+    había creado otra aplicación. Se descubrió en el CI, que ejecuta todo junto.
+
+    Se usa la herramienta de capturas, que es la que genera las que van a
+    Flathub: así la prueba comprueba también el camino que se usa de verdad.
     """
     import os
+    import subprocess
     if not _hay_gtk():
         print("      (sin PyGObject: se salta)")
         return
@@ -287,44 +294,34 @@ def test_la_ventana_se_construye_y_se_dibuja():
         print("      (sin DISPLAY: se salta)")
         return
 
-    import gi
-    from gui.ventana import Aplicacion
-
-    s = Sesion()
-    s.abrir(CORPUS / "05_cmyk_imprenta.pdf")
-    s.seleccionar_en(232, 680)
-    destino = TMP / "gui_ventana.png"
-    if destino.exists():
-        destino.unlink()
-    app = Aplicacion(s, captura=str(destino))
-    app.run(["intactpdf-gui"])
-
+    destino = SALIDA_CAPTURAS / "02-seleccion.png"
+    antes = destino.stat().st_mtime_ns if destino.exists() else 0
+    r = subprocess.run([sys.executable, str(RAIZ / "tools/capturas_gui.py"),
+                        "--solo=02-seleccion"],
+                       capture_output=True, text=True, timeout=180, cwd=str(RAIZ))
+    if r.returncode != 0:
+        raise AssertionError(f"la captura falló: {r.stdout[-300:]}{r.stderr[-300:]}")
     assert destino.exists(), "no se generó la captura"
+    assert destino.stat().st_mtime_ns != antes, "la captura es la de antes"
+
     datos = destino.read_bytes()
     assert len(datos) > 10_000, f"la captura es sospechosamente pequeña: {len(datos)} B"
 
     # Se decodifica el PNG con GdkPixbuf y se cuentan colores en una rejilla.
     # No se usa Pillow a propósito: PyGObject se instala con el gestor de
     # paquetes del sistema y Pillow con pip, y mezclar los dos en un test es
-    # pedir que falle en la mitad de las máquinas.
-    gi.require_version("GdkPixbuf", "2.0")
+    # pedir que falle en la mitad de las distribuciones.
     from gi.repository import GdkPixbuf
-
-    pb = GdkPixbuf.Pixbuf.new_from_file(str(destino))
-    ancho, alto, paso = pb.get_width(), pb.get_height(), pb.get_rowstride()
-    pixeles = pb.get_pixels()
+    imagen = GdkPixbuf.Pixbuf.new_from_file(str(destino))
+    ancho, alto, paso = imagen.get_width(), imagen.get_height(), imagen.get_rowstride()
+    pixeles = imagen.get_pixels()
+    assert ancho > 800 and alto > 500, f"la ventana salió pequeña: {ancho}x{alto}"
     colores = set()
-    for y in range(0, alto, max(1, alto // 45)):
-        fila = y * paso
-        for x in range(0, ancho, max(1, ancho // 45)):
-            i = fila + x * 4
+    for y in range(0, alto, 20):
+        for x in range(0, ancho, 20):
+            i = y * paso + x * 4
             colores.add(bytes(pixeles[i:i + 3]))
-    assert ancho > 600 and alto > 400, f"ventana de {ancho}x{alto}"
-    assert len(colores) > 20, (
-        f"solo {len(colores)} colores distintos en toda la ventana: se ha "
-        f"construido pero no ha dibujado la página")
-
-
+    assert len(colores) > 30, f"la ventana parece vacía: {len(colores)} colores"
 
 
 def test_soltar_un_pdf_encima_de_la_ventana_lo_abre():
@@ -346,11 +343,7 @@ def test_soltar_un_pdf_encima_de_la_ventana_lo_abre():
     from gui.ventana import Aplicacion, Ventana
 
     s = Sesion()
-    app = Aplicacion(s)
-    if not app.register(None):
-        print("      (ya hay una instancia registrada: se salta)")
-        return
-    ventana = Ventana(app, s)
+    ventana = Ventana(_app_compartida(), s)   # una sola aplicación por proceso
     assert not s.abierto, "la sesión empieza sin documento"
 
     fichero = Gio.File.new_for_path(str(CORPUS / "05_cmyk_imprenta.pdf"))
@@ -367,27 +360,42 @@ def test_soltar_un_pdf_encima_de_la_ventana_lo_abre():
 # La cinta
 # ---------------------------------------------------------------------------
 
-_APP = None
-
-
 def _ventana_con(pdf: str | None = None):
-    """Una ventana de verdad, con la aplicación registrada una sola vez.
+    """Una ventana de verdad, con una sola aplicación para todo el proceso.
 
-    `Gio.Application.register()` solo se puede llamar una vez por proceso con
-    el mismo identificador: registrando una aplicación por test, el segundo se
-    quedaría sin ventana y el fallo no tendría nada que ver con lo que se prueba.
+    Una `Gio.Application` por proceso y ya está: crear otra con el mismo
+    identificador hace que la segunda no pueda registrarse, y llamar a `run()`
+    dos veces en un proceso no dibuja nada (devuelve 1). Aquí no hace falta
+    registrar ni ejecutar nada: las pruebas construyen la ventana a mano, que es
+    lo que quieren comprobar. Lo que sí hace falta es no crear una aplicación
+    nueva por prueba, y eso es lo que ya se hacía mal: las pruebas que creaban la
+    suya se saltaban en silencio en cuanto otra se hubiera registrado antes.
     """
-    global _APP
-    from gui.ventana import Aplicacion, Ventana
+    from gui.ventana import Ventana
 
-    if _APP is None:
-        _APP = Aplicacion(Sesion())
-        if not _APP.register(None):
-            return None, None
     s = Sesion()
     if pdf:
         s.abrir(CORPUS / pdf)
-    return s, Ventana(_APP, s)
+    return s, Ventana(_app_compartida(), s)
+
+
+SALIDA_CAPTURAS = RAIZ / "docs" / "capturas"
+_APP = None
+
+
+def _app_compartida():
+    """La única `Gio.Application` de este proceso.
+
+    Existe una sola por proceso a propósito: crear dos con el mismo
+    identificador hace que la segunda no pueda registrarse ni dibujar nada, y
+    además las pruebas que creaban la suya se saltaban en silencio en cuanto otra
+    se hubiera registrado antes.
+    """
+    global _APP
+    from gui.ventana import Aplicacion
+    if _APP is None:
+        _APP = Aplicacion(Sesion())
+    return _APP
 
 
 def _iconos(widget):

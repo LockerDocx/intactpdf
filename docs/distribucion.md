@@ -365,6 +365,38 @@ sola. La constante existe para que el instalador no mande a nadie a un sitio
 donde la aplicación todavía no está: un error ajeno es peor que una negativa
 explicada.
 
+### Una aplicación por proceso, y un solo `run()` (lo destapó el CI)
+
+El primer flujo de integración continua que se escribió para este proyecto falló
+en la primera ejecución, y el fallo era de verdad, no del CI:
+
+```
+ERROR test_soltar_un_pdf_encima_de_la_ventana_lo_abre:
+  Error: g-io-error-quark: An object is already exported for the interface
+  org.gtk.Application at /io/github/lockerdocx/IntactPDF
+```
+
+Son dos reglas de GLib que se pagan con un fallo silencioso, y las dos estaban
+mal usadas:
+
+| regla | qué pasa si se salta |
+|---|---|
+| una `Gio.Application` por proceso e identificador | registrar la segunda **lanza** donde hay bus de sesión; sin bus devuelve False y no pasa nada |
+| un solo `run()` por proceso | la segunda llamada no abre nada: imprime «Failed to register…» y devuelve 1 |
+
+Lo peor no es el fallo, es **dónde se ve**: el entorno de pruebas no tenía bus de
+sesión, así que registrar de más no hacía nada y todo parecía correcto. Las
+pruebas que creaban su propia aplicación se saltaban en silencio en cuanto otra
+se hubiera registrado antes —una prueba que no prueba nada y sale en verde—, y la
+herramienta de capturas generaba la primera imagen y ninguna más.
+
+Arreglado en tres sitios: las pruebas comparten una sola aplicación (y ya no
+registran ninguna, no les hace falta), la captura de la prueba corre **en su
+propio proceso** por el mismo motivo por el que las capturas de verdad se generan
+una por proceso (`tools/capturas_gui.py --solo=NOMBRE`), y `Aplicacion.registrar()`
+está para quien necesite registrar sin reventar. El CI se queda como está: es
+justo lo que tiene que hacer, ejecutar las cosas como las ejecuta la gente.
+
 ### Cómo se comprueba que una instalación quedó bien
 
 ```bash
