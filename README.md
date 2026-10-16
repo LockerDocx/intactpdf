@@ -63,17 +63,21 @@ Si el fichero de sumas no está, o la suma no cuadra, **se para y no instala
 nada**; `--sin-verificar` lo salta, pero hay que pedirlo. Las descargas quedan en
 `~/.cache/intactpdf/descargas`, así que reintentar no vuelve a bajar 61 MB.
 
-Esto está **probado de verdad** contra un servidor: publicación real a una
-carpeta servida por HTTP, `curl | sh` **sin argumentos** desde ahí (AppImage
-descargado, suma comprobada, instalado y `doctor` conforme), instalación por pipx
-lo mismo, y una prueba con el fichero alterado a propósito que acabó en «la suma
-NO cuadra» y cero instalaciones. Lo único que falta para que haya una URL pública
-es **publicar**, y eso es una decisión de nombre y de cuenta:
+**Está publicado**, en https://github.com/LockerDocx/intactpdf — la orden de
+arriba es la de verdad, no un ejemplo. Probado bajando el script de GitHub y
+ejecutándolo como un desconocido, sin pasarle ninguna dirección: por la vía pipx
+bajó la rueda, comprobó la suma, instaló y `doctor` confirmó GTK 4.18.6, y la
+ventana instalada abrió con un PDF; por la vía AppImage bajó los 61 MB, comprobó
+la suma y dejó el lanzador y la entrada de menú puestos. También está probado el
+caso contrario, con un fichero alterado a propósito: «la suma NO cuadra» y cero
+instalaciones.
+
+Para publicar una versión nueva (y para ver qué haría, sin subir nada):
 
 ```bash
-python3 tools/comprobar_nombres.py            # ¿qué nombres están libres?
-tools/publicar.sh --comprobar                 # ¿está todo listo para subir?
-tools/publicar.sh --github=usuario/repo --si  # publicar y dar la URL
+tools/publicar.sh --comprobar                          # ¿está todo listo?
+python3 -m pytest tests/ -q                            # y las pruebas en verde
+GITHUB_TOKEN=ghp_… tools/publicar.sh --github=LockerDocx/intactpdf --si
 ```
 
 Ver [docs/distribucion.md](docs/distribucion.md) § «Publicar» para las cinco
@@ -212,15 +216,17 @@ Las cinco fases del MVP están implementadas y medidas (informes `01`–`07`).
 | ventana GTK4 + libadwaita | funcionando, con cinta de opciones |
 | instalador | `instalar.sh`: detecta la distribución, elige vía y **verifica las sumas** de lo que descarga |
 | capturas | 10 en `docs/capturas/`, generadas por `tools/capturas_gui.py` |
+| publicado | https://github.com/LockerDocx/intactpdf, con el `curl \| sh` funcionando |
+| CI | GitHub Actions: pruebas, instalador y AppStream en cada cambio |
 
 **La ventana funciona y el paquete la abre.** Al pulsar el icono arranca
 `intactpdf-gui`; la consola sigue dentro del mismo Flatpak y se alcanza con
 `flatpak run --command=intactpdf io.github.lockerdocx.IntactPDF`.
 
-Lo que falta para publicar en Flathub: elegir el nombre (los cinco candidatos ya
-están comprobados contra PyPI, GitHub, Flathub y DNS — ver
-[docs/distribucion.md](docs/distribucion.md) § «El nombre»), y `appstream` con
-capturas servidas desde una URL.
+El nombre ya está elegido —**IntactPDF**, comprobado contra PyPI, GitHub, Flathub
+y DNS antes de decidirlo, ver [docs/distribucion.md](docs/distribucion.md)
+§ «El nombre»—, así que lo que falta para **Flathub** es servir las capturas
+desde una URL (AppStream no acepta ficheros locales) y enviar el paquete.
 
 Y lo que falta en el editor, por orden de importancia: guardar encima del
 fichero original desde la ventana (ahora guarda copia), la compactación del

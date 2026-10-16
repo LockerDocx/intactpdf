@@ -77,17 +77,16 @@ existe el fichero»; es correcto y es exactamente lo que se ve.
 
 ### Antes de enviarlo a Flathub
 
-- [ ] Cambiar el identificador `io.github.lockerdocx.IntactPDF` por el definitivo (tiene que
-      estar bajo un dominio o un repositorio de GitHub que controles).
-- [ ] Cambiar las URL `example.invalid` del `metainfo.xml` y del `pyproject.toml`.
+- [x] Elegir el identificador: `io.github.lockerdocx.IntactPDF`, bajo el usuario
+      de GitHub que publica, que es lo que exige Flathub.
+- [x] Cambiar las URL `example.invalid`: ya apuntan a https://github.com/LockerDocx/intactpdf.
 - [ ] Añadir capturas de pantalla al `metainfo.xml`. Ya están hechas (diez, en
       `../docs/capturas/`, generadas con `tools/capturas_gui.py`), pero AppStream
       no acepta ficheros locales: hay que servirlas desde una URL.
-- [ ] Poner el `developer id` del `metainfo.xml` (obligatorio en Flathub): es el
-      dominio o el usuario de GitHub de quien publica, o sea el mismo dato
-      pendiente del identificador.
-- [ ] Pasar `appstreamcli validate` sobre el metainfo. (Ya pasa; queda el
-      `developer-id`, que es el mismo dato que el identificador.)
+- [x] Poner el `developer id` del `metainfo.xml`: `io.github.lockerdocx`.
+- [x] Pasar `appstreamcli validate` sobre el metainfo: pasa, con un aviso
+      «pedantic» que no impide publicar. Se comprueba en cada cambio, en el CI,
+      con `--no-net` (sin red, para que no dependa de que la web esté en pie).
 - [ ] Quitar las tres comprobaciones pendientes de la lista: que `flatpak-builder`
       construya limpio en un contenedor recién creado.
 

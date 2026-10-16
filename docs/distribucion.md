@@ -209,12 +209,12 @@ de ficheros de verdad, porque no hay portal que lo sirva.
 
 Antes de enviar nada hay que cerrar tres cosas:
 
-1. **El identificador.** `io.github.lockerdocx.IntactPDF` es provisional, como el nombre.
-   Flathub exige que el id esté bajo un dominio o un repositorio de GitHub que
-   controle quien envía. Si el nombre final es otro, el id cambia y con él el
-   nombre de los tres ficheros de `packaging/` y el `mimetype` del manifiesto.
-2. **La URL.** El `metainfo.xml` y el `pyproject.toml` llevan
-   `https://example.invalid/...` como marcador. Flathub rechaza eso.
+1. ~~**El identificador.**~~ Hecho: `io.github.lockerdocx.IntactPDF`, bajo el
+   usuario de GitHub que envía el paquete, que es lo que exige Flathub.
+2. ~~**La URL.**~~ Hecha: el `metainfo.xml`, el `pyproject.toml` y la ventana
+   apuntan a `https://github.com/LockerDocx/intactpdf`. Flathub rechaza los
+   marcadores tipo `example.invalid`, y ya no queda ninguno en lo que se
+   empaqueta.
 3. **Capturas de pantalla** en el `metainfo.xml`. Las imágenes ya están hechas
    (`docs/capturas/`, diez, generadas con `tools/capturas_gui.py`), pero
    AppStream no acepta ficheros locales: hay que servirlas desde una URL, y esa
@@ -581,25 +581,42 @@ Verificado ejecutando, no leyendo:
   servidor no da `SHA256SUMS`, se para. `--sin-verificar` lo salta, pero hay que
   escribirlo a propósito.
 
-Y lo que **no** está: la URL. No hay ninguna URL pública de este proyecto, porque
-publicar significa meter los ficheros en un sitio que sea de alguien, y eso —el
-nombre y la cuenta— es una decisión de quien publica, no del programa. El
-servidor de pruebas del entorno de desarrollo contesta **403**: la vista previa
-del entorno exige una cabecera con un token que solo conoce el navegador, así que
-no sirve para un `curl` de fuera. En el código, la dirección está **vacía a
-propósito** (`BASE_URL_DEFECTO`): es preferible un error que diga «no sé de dónde
-descargar» a un error que diga «no encuentro ese fichero» apuntando a un dominio
-ajeno.
+Y está **publicado**: el repositorio es
+[github.com/LockerDocx/intactpdf](https://github.com/LockerDocx/intactpdf) y la
+versión 0.1.0 tiene los cuatro ficheros. La dirección de descarga de una versión
+en GitHub es estable (`/releases/latest/download/`), así que el `curl | sh` de la
+documentación no cambia al publicar la siguiente.
 
-Mientras no haya URL, hay dos caminos que sí funcionan y están probados:
+Antes, la dirección estaba **vacía a propósito** en el código
+(`BASE_URL_DEFECTO`), porque publicar es meter los ficheros en una cuenta que es
+de alguien y esa decisión no la puede tomar el programa. Ese hueco sigue ahí para
+quien publique en otro sitio:
 
 ```bash
-# 1. Desde el repositorio (el código está al lado)
+# Desde el repositorio, con el código al lado
 ./instalar.sh
 
-# 2. Con los ficheros ya descargados, en la misma carpeta
-sh instalar.sh --appimage=./IntactPDF-0.1.0-x86_64.AppImage
+# Publicado en otro sitio, con los ficheros en una carpeta
+python3 -m http.server 9999
+curl -sSL http://127.0.0.1:9999/instalar.sh | sh -s -- --base-url=http://127.0.0.1:9999
 ```
+
+### Lo que se comprobó al publicar
+
+Publicar no es subir ficheros: es que a otra persona le funcione. Se comprobó
+desde fuera, bajando el script de GitHub y ejecutándolo como lo haría un
+desconocido, sin pasarle ninguna dirección:
+
+```bash
+curl -sSL https://github.com/LockerDocx/intactpdf/releases/latest/download/instalar.sh | sh
+```
+
+- **Vía pipx**: bajó la rueda de la versión, comprobó la suma, instaló con
+  `pipx`, y al final `doctor` dijo que todo estaba listo con GTK 4.18.6 y
+  libadwaita 1.7.6. Luego se abrió la ventana instalada, con un PDF, y siguió
+  abierta (que es lo que tiene que pasar).
+- **Vía AppImage**: bajó 61 MB de la versión, comprobó la suma, lo dejó en
+  `~/.local` con su lanzador y su entrada de menú, y `doctor` conforme.
 
 ## El nombre, comprobado con datos
 
@@ -621,10 +638,25 @@ python3 tools/comprobar_nombres.py
 | PDFQuill | libre | libre | libre | libres |
 
 Lo que sale de aquí no es «el bueno»: es qué se puede elegir sin chocar. `PDFByte`
-queda descartado por PyPI. De los otros, la recomendación es **IntactPDF**,
-porque describe la única promesa que este programa cumple y los demás no: lo que
-no editas queda **intacto**. Los otros cuatro o describen algo que ya hacen otros
-(«PDF», «Studio») o piden una explicación.
+queda descartado por PyPI.
+
+**Elegido: IntactPDF** (16 de octubre de 2026). Describe la única promesa que
+este programa cumple y los demás no: lo que no editas queda **intacto**. Los
+otros cuatro o describen algo que ya hacen otros («PDF», «Studio») o piden una
+explicación. De ahí salen los cuatro nombres que hay que escribir en todos los
+sitios:
+
+| dónde | qué | se puede cambiar después |
+|---|---|---|
+| GitHub | `LockerDocx/intactpdf` | sí, pero rompe la URL de descarga |
+| pip | `intactpdf` | **no**: hay gente que ya lo tiene instalado |
+| Flatpak | `io.github.lockerdocx.IntactPDF` | **no**: lo mismo |
+| comandos | `intactpdf` y `intactpdf-gui` | no sin dejar a nadie tirado |
+
+El identificador de Flathub usa el usuario de GitHub, que es lo que exige
+Flathub: así el paquete está bajo el control de quien lo publica y se puede
+comprobar sin depender de un dominio. Si algún día hay dominio propio
+(`intactpdf.org` está libre), se puede migrar, pero el identificador se queda.
 
 Dos avisos sobre lo que esta comprobación **no** dice. Un nombre que no resuelve
 por DNS puede estar registrado igual, y uno que resuelve está casi seguro
@@ -650,11 +682,16 @@ significa que está libre **hoy**: reservarlo es un clic.
   Python del propio AppImage, GTK 4, libadwaita, pango, cairo...). Es factible y
   es trabajo de empaquetado puro; hasta entonces, la ventana sin instalar nada es
   el Flatpak.
-- **Publicar**: el mecanismo está hecho y verificado de punta a punta
-  (`tools/publicar.sh` publica, y el `curl | sh` funcionó sin argumentos porque
-  la dirección viaja dentro del script). Falta la parte que no puede hacer el
-  programa: elegir el nombre, crear la cuenta y subir los ficheros. Tampoco se
-  puede publicar en Flathub hasta entonces, ni firmar el AppImage.
-- **La comprobación en el CI**: que cada etiqueta construya el Flatpak y el
-  AppImage, y que el test de aceptación corra contra el AppImage y no solo contra
-  el código fuente.
+- **Flathub**: el nombre y el identificador ya están elegidos y el manifiesto
+  apunta al runtime correcto; falta enviar el paquete y, antes, servir las
+  capturas desde una URL (AppStream no acepta ficheros locales).
+- **Que cada etiqueta construya y publique sola**: hoy `.github/workflows/pruebas.yml`
+  pasa las pruebas, el instalador y el AppStream en cada cambio, pero los
+  artefactos se construyen y se suben a mano con `tools/publicar.sh`. Lo que
+  falta es que una etiqueta `v*` lance la construcción del AppImage y la
+  publicación, para no depender de que alguien se acuerde. Los pasos ya están
+  escritos y probados: sólo hay que llevarlos al flujo.
+- **Firmar el AppImage** con GPG, para que se pueda comprobar que viene de quien
+  dice que viene. Hoy la garantía es el sha256, que viaja por el mismo sitio que
+  el fichero: sirve contra una descarga truncada o manipulada en el camino, no
+  contra alguien que controle el servidor.

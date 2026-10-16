@@ -1,0 +1,81 @@
+name: pruebas
+
+# Lo que este flujo comprueba, y por qué eso y no otra cosa:
+#
+#  · las 100 pruebas del proyecto, incluidas las de la ventana (que necesitan
+#    una pantalla: de ahí Xvfb, que es una pantalla de mentira pero de verdad);
+#  · que el instalador se ejecute **desde una carpeta vacía**, que es como lo
+#    ejecuta la gente con `curl | sh`, y no como es cómodo probarlo;
+#  · que la tabla de paquetes del instalador y la que usa `doctor` digan lo
+#    mismo, porque son dos listas escritas a mano en sitios distintos;
+#  · que el fichero que se publica (metainfo de AppStream) sea válido.
+#
+# NO comprueba el AppImage ni el Flatpak: los dos tardan media hora y lo que
+# aportan aquí ya lo cubren las pruebas. Se construyen al publicar una versión
+# (ver docs/distribucion.md).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:      # y a mano, desde la pestaña Actions
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # La pila gráfica se instala con el gestor de paquetes de la
+      # distribución, no con pip: PyGObject va atado a las bibliotecas de GTK
+      # del sistema y compilarlo aquí sería media hora para nada. Es lo mismo
+      # que hace `instalar.sh` en la máquina de un usuario.
+      - name: Pila gráfica y herramientas
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            python3-gi python3-gi-cairo gir1.2-gtk-4.0 gir1.2-adw-1 \
+            xvfb qpdf appstream
+
+      - name: Dependencias de Python
+        run: |
+          python3 -m pip install --break-system-packages -q \
+            pikepdf pypdfium2 fonttools pypdf reportlab numpy pillow pytest
+
+      - name: Qué versiones hay
+        run: |
+          python3 -c "import sys; print('Python', sys.version)"
+          python3 -c "import gi; gi.require_version('Gtk','4.0'); gi.require_version('Adw','1');
+          from gi.repository import Gtk, Adw; print('GTK', Gtk.get_major_version(), Gtk.get_minor_version(), '· libadwaita', Adw.MAJOR_VERSION, Adw.MINOR_VERSION)"
+          python3 -c "import pikepdf; print('pikepdf', pikepdf.__version__)"
+
+      - name: Pruebas
+        run: python3 -m pytest tests/ -q
+
+      - name: Pruebas de la ventana (con pantalla de mentira)
+        run: xvfb-run -a --server-args="-screen 0 1280x900x24" python3 tests/test_gui.py
+
+      - name: El instalador se ejecuta desde una carpeta vacía
+        run: |
+          carpeta="$(mktemp -d)"
+          cp instalar.sh "$carpeta/"
+          cd "$carpeta"
+          for sistema in opensuse-leap debian fedora arch alpine void; do
+            echo "── $sistema"
+            INTACTPDF_BASE=https://ejemplo.invalid/x sh ./instalar.sh \
+              --simular="$sistema" --si | tail -4
+          done
+
+      - name: Sintaxis de los guiones de shell
+        run: |
+          sh -n instalar.sh
+          sh -n tools/publicar.sh
+          bash -n packaging/appimage/construir.sh
+
+      - name: El metainfo de AppStream es válido
+        run: appstreamcli validate --no-net packaging/io.github.lockerdocx.IntactPDF.metainfo.xml
+
+      - name: La salida de un guardado empieza por los bytes del original
+        run: python3 tools/test_aceptacion.py

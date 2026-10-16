@@ -257,45 +257,107 @@ comprobar() {
 
 subir_github() {
     repo="$DESTINO"
-    hay gh || morir "hace falta la herramienta «gh» (GitHub CLI), y no está.
-    Se instala con el gestor de paquetes de tu distribución, o desde
-    https://cli.github.com. Después: gh auth login"
+    hay curl || morir "hace falta curl, y no está"
+    [ -n "${GITHUB_TOKEN:-}" ] || morir "hace falta un token de GitHub con permiso
+    para crear versiones en $repo. Se pasa así:
 
-    paso "¿está autenticado gh?"
-    gh auth status >/dev/null 2>&1 || morir "gh no está autenticado: ejecuta «gh auth login»"
+        GITHUB_TOKEN=ghp_… $0 --github=$repo
 
-    paso "¿existe el repositorio $repo?"
-    if gh repo view "$repo" >/dev/null 2>&1; then
-        hecho "ya existe"
+    (Se crea en https://github.com/settings/tokens; basta con el permiso de
+    repositorio. En un CI suele estar ya en la variable GITHUB_TOKEN.)"
+
+    api="https://api.github.com/repos/$repo"
+    cabeceras_auth="Authorization: Bearer $GITHUB_TOKEN"
+
+    # 1. ¿Existe el repositorio y sirve el token? Sin esto, el fallo que se ve
+    #    después («creando la versión») no dice cuál de las dos cosas falla.
+    codigo="$(curl -sS -o /dev/null -w '%{http_code}' -H "$cabeceras_auth" \
+        -H "Accept: application/vnd.github+json" "$api")"
+    case "$codigo" in
+        200) hecho "el repositorio $repo existe y el token sirve" ;;
+        404) if [ "$SI" != "1" ]; then
+                 printf '    El repositorio $repo no existe. ¿Lo creo público? [s/N] '
+                 read -r r || r="n"
+                 case "$r" in s|S|si|sí|y|Y) ;; *) morir "cancelado" ;; esac
+             fi
+             paso "creando el repositorio $repo"
+             curl -sS -X POST -H "$cabeceras_auth" -H "Accept: application/vnd.github+json" \
+                 https://api.github.com/user/repos \
+                 -d "{\"name\":\"${repo#*/}\",\"description\":\"Editor de PDF para Linux que no reconstruye el documento.\",\"private\":false}" \
+                 >/dev/null || morir "no se pudo crear el repositorio"
+             hecho "repositorio creado" ;;
+        401|403) morir "el token no vale para $repo (contesta $codigo)" ;;
+        *) morir "no se pudo consultar $repo (contesta $codigo)" ;;
+    esac
+
+    # 2. La versión. Si ya existe, se reutiliza: publicar dos veces la misma
+    #    versión es lo que pasa cuando hay que rehacer un AppImage, y no puede
+    #    ser un error.
+    etiqueta="v$VERSION"
+    paso "preparando la versión $etiqueta"
+    cuerpo="IntactPDF $VERSION.
+
+## Instalar
+
+    curl -sSL https://github.com/$repo/releases/latest/download/instalar.sh | sh
+
+El instalador mira la distribución, elige la vía que mejor viene (Flatpak, pipx
+o AppImage), **comprueba el sha256 de lo que descarga** y verifica al final que
+el programa funciona. Las sumas están en \`SHA256SUMS\`.
+
+En este zip va, además del instalador:
+
+- \`IntactPDF-$VERSION-$ARQUITECTURA.AppImage\` — la consola, sin instalar nada
+  (61 MB; la ventana necesita la vía Flatpak o pipx).
+- \`intactpdf-$VERSION-py3-none-any.whl\` — el paquete de Python, para pipx o pip."
+    json_cuerpo="$(python3 - "$etiqueta" "$cuerpo" <<'PYFIN'
+import json, sys
+print(json.dumps({"tag_name": sys.argv[1], "name": "IntactPDF " + sys.argv[1][1:],
+                  "body": sys.argv[2], "draft": False, "prerelease": False}))
+PYFIN
+)"
+    respuesta="$(curl -sS -X POST -H "$cabeceras_auth" -H "Accept: application/vnd.github+json" \
+        "$api/releases" -d "$json_cuerpo")"
+    id_version="$(printf '%s' "$respuesta" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("id",""))' 2>/dev/null)"
+    if [ -z "$id_version" ]; then
+        # 422 = ya existe esa etiqueta. Entonces se reutiliza su id.
+        id_version="$(curl -sS -H "$cabeceras_auth" -H "Accept: application/vnd.github+json" \
+            "$api/releases/tags/$etiqueta" |
+            python3 -c 'import json,sys; print(json.load(sys.stdin).get("id",""))' 2>/dev/null)"
+        [ -n "$id_version" ] || morir "no se pudo crear ni encontrar la versión $etiqueta"
+        hecho "la versión $etiqueta ya existía: se actualizan sus ficheros"
     else
-        if [ "$SI" != "1" ]; then
-            printf '    No existe. ¿Lo creo público? [s/N] '
-            read -r r || r="n"
-            case "$r" in s|S|si|sí|y|Y) ;; *) morir "cancelado" ;; esac
-        fi
-        paso "creando $repo"
-        gh repo create "$repo" --public \
-            --description "Editor de PDF para Linux que no reconstruye el documento" ||
-            morir "no se pudo crear el repositorio"
-        hecho "repositorio creado"
+        hecho "versión $etiqueta creada"
     fi
 
-    etiqueta="v$VERSION"
-    paso "publicando la versión $etiqueta con los ficheros"
-    ficheros=""
+    # 3. Los ficheros. Se borra el que ya estuviera con el mismo nombre (GitHub
+    #    no permite subir dos veces el mismo nombre) y se sube el nuevo.
     for f in "$PUBLICO"/*.AppImage "$PUBLICO"/*.whl "$PUBLICO/instalar.sh" \
              "$PUBLICO/SHA256SUMS"; do
-        [ -f "$f" ] && ficheros="$ficheros $f"
+        [ -f "$f" ] || continue
+        nombre="$(basename "$f")"
+        [ "$SIMULAR" = "1" ] && { echo "    (simulado) subiría $nombre"; continue; }
+        id_viejo="$(curl -sS -H "$cabeceras_auth" -H "Accept: application/vnd.github+json" \
+            "$api/releases/$id_version/assets" |
+            python3 -c "
+import json, sys
+for a in json.load(sys.stdin):
+    if a['name'] == '$nombre': print(a['id']); break
+" 2>/dev/null)"
+        if [ -n "$id_viejo" ]; then
+            curl -sS -X DELETE -H "$cabeceras_auth" \
+                "https://api.github.com/repos/$repo/releases/assets/$id_viejo" >/dev/null
+        fi
+        printf '    subiendo %s (%s)… ' "$nombre" "$(du -h "$f" | cut -f1)"
+        curl -sS -X POST -H "$cabeceras_auth" -H "Content-Type: application/octet-stream" \
+            --data-binary "@$f" \
+            "https://uploads.github.com/repos/$repo/releases/$id_version/assets?name=$nombre" \
+            >/dev/null || morir "falló la subida de $nombre"
+        echo "hecho"
     done
-    # shellcheck disable=SC2086
-    gh release create "$etiqueta" $ficheros \
-        --title "IntactPDF $VERSION" \
-        --notes "Instalación: curl -sSL https://github.com/$repo/releases/latest/download/instalar.sh | sh" ||
-        gh release upload "$etiqueta" $ficheros --clobber
 
     base="https://github.com/$repo/releases/latest/download"
-    hecho "publicado en $base"
-    printf '\n    Para instalar:\n\n      curl -sSL %s/instalar.sh | sh\n\n' "$base"
+    printf '\n    Publicado. Para instalar:\n\n      curl -sSL %s/instalar.sh | sh\n\n' "$base"
     return 0
 }
 
