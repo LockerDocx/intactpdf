@@ -1,8 +1,10 @@
 """
 Interfaz de línea de comandos de IntactPDF.
 
-Es la puerta de entrada mientras no haya interfaz gráfica, y sirve para probar
-el motor en un PDF de verdad.
+**Hay dos programas, y este es el de consola**: la ventana se abre con
+`intactpdf-gui` (o desde la entrada «IntactPDF» del menú de aplicaciones). Este
+hace lo mismo sin ventana, que es lo que hace falta en un servidor, en un guion o
+en una tubería.
 
     intactpdf doctor                             diagnóstico del entorno
     intactpdf info    documento.pdf              resumen del documento
@@ -285,6 +287,13 @@ def cmd_doctor(args) -> int:
             print(f"      {'libadwaita':12} FALTA ({e})")
             print(f"        → {_comando_gui() or 'instala libadwaita con tu gestor de paquetes'}")
         print(f"        {sys.executable}")
+        # Decía las versiones de GTK y no decía cómo abrir la ventana, que es lo
+        # único que se viene a buscar aquí. El caso real: alguien instaló el
+        # programa, ejecutó `doctor`, vio «interfaz gráfica ... GTK 4.22.4» y
+        # siguió sin saber que tenía una ventana puesta.
+        print()
+        print("        → para abrir la ventana:  intactpdf-gui")
+        print("          (o la entrada «IntactPDF» del menú de aplicaciones)")
     except Exception as e:
         from . import dependencias
         d = dependencias.detectar()
@@ -558,8 +567,14 @@ def construir_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
         prog="intactpdf",
         description="IntactPDF — editar un PDF sin reconstruirlo",
-        epilog="Todas las ediciones se guardan de forma incremental: el fichero "
-               "de salida empieza por los bytes del original.")
+        epilog="La VENTANA (con cinta de opciones, para trabajar con el ratón) se "
+               "abre con «intactpdf-gui», o desde la entrada «IntactPDF» del menú "
+               "de aplicaciones.\n\n"
+               "Lo de aquí es lo mismo sin ventana: para guiones, servidores y "
+               "quien prefiera la línea de órdenes.\n\n"
+               "Todas las ediciones se guardan de forma incremental: el fichero "
+               "de salida empieza por los bytes del original.",
+        formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="orden", required=True)
 
     p = sub.add_parser("doctor", help="diagnóstico del entorno")
@@ -632,6 +647,26 @@ def construir_parser() -> argparse.ArgumentParser:
 
 def main(argv=None) -> int:
     ap = construir_parser()
+    argv = sys.argv[1:] if argv is None else list(argv)
+    if not argv:
+        # Sin argumentos, argparse escupe «the following arguments are required:
+        # orden», que no ayuda a nadie. Y el caso real que lo motivó: alguien
+        # instaló el programa, abrió la consola, y no sabía que tenía una ventana
+        # puesta, con su entrada en el menú de aplicaciones. Aquí se dice lo de la
+        # ventana primero y lo de la consola después.
+        print("\n  IntactPDF tiene dos formas de usarse, y esta es la de consola.\n")
+        print("    Para la VENTANA (con cinta de opciones, para el ratón):\n")
+        print("        intactpdf-gui                  (o la entrada «IntactPDF» del")
+        print("                                        menú de aplicaciones)\n")
+        print("    Aquí, en la consola:\n")
+        print("        intactpdf doctor               ¿está todo listo?")
+        print("        intactpdf info documento.pdf   qué hay dentro")
+        print("        intactpdf list documento.pdf   objetos de la página")
+        print("        intactpdf --help               todo lo que sabe hacer\n")
+        print("    Las dos hacen lo mismo: borrar objetos, moverlos,")
+        print("    redimensionarlos y cambiar el texto, guardando de forma")
+        print("    incremental para que lo que no toques quede intacto.\n")
+        return EXITO
     args = ap.parse_args(argv)
     try:
         return args.func(args)

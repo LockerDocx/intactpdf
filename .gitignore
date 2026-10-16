@@ -12,3 +12,4 @@ __pycache__/
 
 # El fichero de sumas tampoco: se genera al publicar.
 SHA256SUMS
+build/
