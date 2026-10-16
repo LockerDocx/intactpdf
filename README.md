@@ -208,7 +208,7 @@ Las cinco fases del MVP están implementadas y medidas (informes `01`–`07`).
 | | |
 |---|---|
 | corpus | 12 PDFs, 16 páginas |
-| tests unitarios | 103, 0 fallos |
+| tests unitarios | 104, 0 fallos (GUI 29, instalador 16) |
 | casos de aceptación | 19/19, 0 píxeles fuera, prefijo intacto 19/19 |
 | geometría contra pdfium | 16/16 páginas |
 | Flatpak | construido y probado dentro del sandbox, ventana incluida |
@@ -217,7 +217,7 @@ Las cinco fases del MVP están implementadas y medidas (informes `01`–`07`).
 | instalador | `instalar.sh`: detecta la distribución, elige vía y **verifica las sumas** de lo que descarga |
 | capturas | 10 en `docs/capturas/`, generadas por `tools/capturas_gui.py` |
 | publicado | https://github.com/LockerDocx/intactpdf, con el `curl \| sh` funcionando |
-| CI | GitHub Actions: pruebas, instalador y AppStream en cada cambio |
+| CI | verde en GitHub Actions: pruebas, instalador y AppStream en cada cambio |
 
 **La ventana funciona y el paquete la abre.** Al pulsar el icono arranca
 `intactpdf-gui`; la consola sigue dentro del mismo Flatpak y se alcanza con
