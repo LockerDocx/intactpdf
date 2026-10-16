@@ -1,0 +1,25 @@
+# Dependencias de IntactPDF.
+#
+# Todas permisivas, coherente con la decisión B1 (MIT/Apache + núcleo propio).
+# Nada de PyMuPDF ni MuPDF, que son AGPL.
+#
+#   pip install --user -r requirements.txt
+#   sudo apt-get install qpdf poppler-utils
+#
+# O directamente: bash tools/preparar_entorno.sh
+
+# --- obligatorias -----------------------------------------------------------
+pikepdf>=10       # MPL-2.0     leer y escribir la estructura del PDF
+pypdfium2>=4      # Apache/BSD  renderizado y posiciones de carácter
+fontTools>=4      # MIT         subconjuntos de fuente (fase F4)
+
+# --- usadas por el arnés y los tools -----------------------------------------
+pypdf>=5          # BSD-3       comparaciones auxiliares
+reportlab>=4      # BSD-3       generar el corpus de prueba
+numpy>=1.26       # BSD-3       diff de píxeles
+pillow>=10        # MIT-CMU     manejo de imágenes renderizadas
+
+# --- herramientas de sistema (no son pip) ------------------------------------
+#   qpdf             MPL-2.0   validar la salida (qpdf --check)
+#   poppler-utils    GPL-2     pdftoppm, para comparaciones de referencia
+#   libreoffice-draw MPL-2.0   SOLO para el arnés de fidelidad comparativa

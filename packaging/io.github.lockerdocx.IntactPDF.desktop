@@ -1,0 +1,20 @@
+[Desktop Entry]
+Type=Application
+Name=IntactPDF
+Name[es]=IntactPDF
+Name[de]=IntactPDF
+GenericName=PDF editor
+GenericName[es]=Editor de PDF
+GenericName[de]=PDF-Editor
+Comment=Edit PDFs without rebuilding the document
+Comment[es]=Edita PDFs sin reconstruir el documento
+Comment[de]=PDFs bearbeiten, ohne das Dokument neu aufzubauen
+# Abre la ventana, no un terminal.
+Terminal=false
+Exec=intactpdf-gui
+Icon=io.github.lockerdocx.IntactPDF
+Categories=Office;Graphics;
+Keywords=pdf;editor;documents;vector;text;
+Keywords[es]=pdf;editor;documentos;vector;texto;
+Keywords[de]=pdf;editor;dokumente;vektor;text;
+StartupNotify=true

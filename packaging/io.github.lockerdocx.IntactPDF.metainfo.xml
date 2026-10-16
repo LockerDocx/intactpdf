@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.lockerdocx.IntactPDF</id>
+  <name>IntactPDF</name>
+  <summary>Edit PDFs without rebuilding the document</summary>
+  <summary xml:lang="es">Edita PDFs sin reconstruir el documento</summary>
+
+  <description>
+    <p>
+      IntactPDF edits the text, images and vector graphics of an existing
+      PDF and saves it by appending to the file, the way the PDF specification
+      intends. The output starts with the bytes of the original, so whatever was
+      not edited cannot have changed.
+    </p>
+    <p>
+      Measured on a corpus of 12 deliberately awkward PDFs: 19 edits (deleting a
+      vector, moving and resizing a CMYK image, rewriting a line of text) with
+      zero pixels altered outside the edited region. Passing the same files
+      through office suites and other editors rewrites the CMYK colours, drops
+      the alpha masks, converts embedded images to JPEG and loses form fields
+      and page rotation.
+    </p>
+    <p>
+      The window shows the page, its objects in a side panel and a ribbon with
+      every option grouped by what it is for: it is always clear what is being
+      edited, what is switched off because it does not apply, and what will
+      happen when saving.
+    </p>
+    <p xml:lang="es">
+      IntactPDF edita el texto, las imágenes y los vectores de un PDF que
+      ya existe y guarda añadiendo al final del fichero, como manda la
+      especificación. La salida empieza por los bytes del original, así que lo
+      que no se ha editado es imposible que haya cambiado.
+    </p>
+    <p xml:lang="es">
+      La ventana enseña la página, sus objetos en un panel lateral y una cinta
+      con todas las opciones agrupadas por para qué sirven: en todo momento se
+      ve qué se está editando, qué está apagado porque no aplica y qué va a
+      pasar al guardar.
+    </p>
+  </description>
+
+  <!-- El `id` del desarrollador es obligatorio en Flathub desde 2024. Vale un
+       dominio, o el usuario de una cuenta que controle quien publica: de ahí
+       sale también el identificador de la aplicación. -->
+  <developer id="io.github.lockerdocx">
+    <name>IntactPDF</name>
+  </developer>
+
+  <launchable type="desktop-id">io.github.lockerdocx.IntactPDF.desktop</launchable>
+  <url type="homepage">https://github.com/LockerDocx/intactpdf</url>
+  <url type="bugtracker">https://github.com/LockerDocx/intactpdf/issues</url>
+
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT OR Apache-2.0</project_license>
+
+  <content_rating type="oars-1.1"/>
+
+  <releases>
+    <release version="0.1.0" date="2026-10-15">
+      <description>
+        <p>
+          First release. Graphic interface with a ribbon of options, and the
+          same editor available from the command line for scripts.
+        </p>
+      </description>
+    </release>
+  </releases>
+
+  <categories>
+    <category>Office</category>
+    <category>Graphics</category>
+  </categories>
+
+  <requires>
+    <display_length compare="ge">360</display_length>
+  </requires>
+  <recommends>
+    <control>keyboard</control>
+    <control>pointing</control>
+  </recommends>
+</component>

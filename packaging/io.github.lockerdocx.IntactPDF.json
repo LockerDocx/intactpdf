@@ -1,0 +1,76 @@
+{
+    "id": "io.github.lockerdocx.IntactPDF",
+    "runtime": "org.gnome.Platform",
+    "runtime-version": "51",
+    "sdk": "org.gnome.Sdk",
+    "command": "intactpdf-gui",
+
+    "finish-args": [
+        "--socket=fallback-x11",
+        "--socket=wayland",
+        "--share=ipc",
+        "--device=dri",
+        "--filesystem=xdg-run/gvfsd",
+        "--metadata=X-DConf=migrate-path=/io/github/lockerdocx/IntactPDF/"
+    ],
+
+    "comment": "Sobre los permisos: NO se pide el directorio personal. La ventana abre y guarda a través del portal de ficheros (Gtk.FileDialog), que concede el acceso al fichero concreto que el usuario elige y solo a ese. Un editor de PDF no necesita ver el resto del disco para trabajar, y `home` es justo el permiso que hace que un revisor de Flathub mire mal el paquete. En una máquina sin portal de ficheros (un servidor sin escritorio, una sesión mínima, los contenedores de integración) el diálogo no puede aparecer: ahí se añade el permiso a mano con `flatpak override --user --filesystem=home io.github.lockerdocx.IntactPDF`, sin tocar el paquete. Medido a mano en la sesión anterior: pedir `home:ro` y además `xdg-documents` NO deja escribir en Documentos, porque el permiso de solo lectura sobre el directorio padre anula el específico.",
+
+    "modules": [
+        "python3-deps.json",
+
+        {
+            "name": "fuentes-dejavu",
+            "comment": "Las fuentes que el nivel 2 necesita para incrustar glifos que faltan. Van DENTRO del paquete a propósito: el sandbox de Flatpak no ve /usr/share/fonts del anfitrión, así que sin esto escribir una 'ó' que no estaba en el subconjunto fallaría en un Flatpak y funcionaría fuera de él. Un programa que se comporta distinto según cómo se instaló es un programa que nadie puede depurar. Se instalan en /app/share/fonts, el directorio estándar: Flatpak ya pone /app/share en XDG_DATA_DIRS, así que el núcleo las encuentra por la vía normal, sin código especial.",
+            "buildsystem": "simple",
+            "build-commands": [
+                "install -d /app/share/fonts",
+                "install -m644 DejaVuSans.ttf DejaVuSans-Bold.ttf /app/share/fonts/",
+                "install -Dm644 LICENSE.DejaVu /app/share/intactpdf/LICENSE.DejaVu"
+            ],
+            "sources": [
+                {
+                    "type": "file",
+                    "path": "../fuentes/DejaVuSans.ttf"
+                },
+                {
+                    "type": "file",
+                    "path": "../fuentes/DejaVuSans-Bold.ttf"
+                },
+                {
+                    "type": "file",
+                    "path": "../fuentes/LICENSE.DejaVu"
+                }
+            ]
+        },
+
+        {
+            "name": "intactpdf",
+            "comment": "La aplicación. Se instala con setuptools desde el directorio del repositorio: el mismo pyproject.toml que usa quien instala con pip, para que las dos vías no puedan divergir. De ahí salen ya los dos comandos, `intactpdf-gui` (la ventana) y `intactpdf` (la consola), porque son dos puntos de entrada declarados en pyproject.toml; aquí no hay que instalar ningún lanzador a mano. El lanzador que pip genera con el shebang de /usr/bin/python3 funciona dentro del runtime porque ahí python3 vive exactamente en esa ruta.",
+            "buildsystem": "simple",
+            "build-commands": [
+                "pip3 install --no-build-isolation --no-deps --prefix=/app .",
+                "install -Dm644 packaging/io.github.lockerdocx.IntactPDF.desktop /app/share/applications/io.github.lockerdocx.IntactPDF.desktop",
+                "install -Dm644 packaging/io.github.lockerdocx.IntactPDF.cli.desktop /app/share/applications/io.github.lockerdocx.IntactPDF.cli.desktop",
+                "install -Dm644 packaging/io.github.lockerdocx.IntactPDF.metainfo.xml /app/share/metainfo/io.github.lockerdocx.IntactPDF.metainfo.xml",
+                "install -Dm644 packaging/icons/io.github.lockerdocx.IntactPDF.svg /app/share/icons/hicolor/scalable/apps/io.github.lockerdocx.IntactPDF.svg"
+            ],
+            "sources": [
+                {
+                    "type": "dir",
+                    "path": "..",
+                    "comment": "El árbol del repositorio, menos lo que no es código. `dist/` lleva el AppImage de 61 MB y `corpus/` los PDFs de prueba: meterlos en el paquete multiplicaría su tamaño para no servir de nada en tiempo de ejecución.",
+                    "skip": [
+                        ".tmp",
+                        "dist",
+                        "build",
+                        "build-dir",
+                        "corpus",
+                        "resultados",
+                        "fuentes"
+                    ]
+                }
+            ]
+        }
+    ]
+}

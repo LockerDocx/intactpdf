@@ -1,0 +1,74 @@
+[
+  {
+    "id": "00_baseline",
+    "archivo": "00_baseline.pdf",
+    "descripcion": "Control. PDF trivial: cualquier edición debe dejarlo byte a byte igual salvo lo tocado.",
+    "bytes": 25771
+  },
+  {
+    "id": "01_texto_fragmentado",
+    "archivo": "01_texto_fragmentado.pdf",
+    "descripcion": "Una línea visible dividida en decenas de operadores de texto con charSpace manual.",
+    "bytes": 28417
+  },
+  {
+    "id": "02_fuente_subset",
+    "archivo": "02_fuente_subset.pdf",
+    "descripcion": "Fuentes TTF incrustadas; solo contiene los glifos usados. Bloquea escribir caracteres nuevos.",
+    "bytes": 80551
+  },
+  {
+    "id": "03_vectores_clip_degradado",
+    "archivo": "03_vectores_clip_degradado.pdf",
+    "descripcion": "Degradado dentro de un clip circular + trazado de 14 segmentos.",
+    "bytes": 23664
+  },
+  {
+    "id": "04_imagen_smask",
+    "archivo": "04_imagen_smask.pdf",
+    "descripcion": "Imagen RGBA: el alfa viaja como SMask. Perderlo cambia el fondo.",
+    "bytes": 190825
+  },
+  {
+    "id": "05_cmyk_imprenta",
+    "archivo": "05_cmyk_imprenta.pdf",
+    "descripcion": "JPEG CMYK y rellenos CMYK. Convertir a RGB al guardar cambia los colores.",
+    "bytes": 99519
+  },
+  {
+    "id": "06_modos_de_texto",
+    "archivo": "06_modos_de_texto.pdf",
+    "descripcion": "Texto invisible (Tr 3), solo contorno (Tr 1) y texto recortado por clip.",
+    "bytes": 43693
+  },
+  {
+    "id": "07_paginas_rotadas_mixtas",
+    "archivo": "07_paginas_rotadas_mixtas.pdf",
+    "descripcion": "Tamaños mezclados, rotación dentro del stream y /Rotate 90 a nivel de página.",
+    "bytes": 24290
+  },
+  {
+    "id": "08_formularios_anotaciones",
+    "archivo": "08_formularios_anotaciones.pdf",
+    "descripcion": "AcroForm con campos, checkbox y enlace. Editar contenido no debe romperlos.",
+    "bytes": 29010
+  },
+  {
+    "id": "09_documento_grande",
+    "archivo": "09_documento_grande.pdf",
+    "descripcion": "300 páginas para medir tiempo de apertura y memoria.",
+    "bytes": 306654
+  },
+  {
+    "id": "10_fuente_completa",
+    "archivo": "10_fuente_completa.pdf",
+    "descripcion": "Fuente TTF incrustada completa (subset=0). El opuesto del caso 02.",
+    "bytes": 384157
+  },
+  {
+    "id": "11_texto_transformado",
+    "archivo": "11_texto_transformado.pdf",
+    "descripcion": "Texto bajo cm escalado x2 y x0.5, rotado 30 grados y con Tm escalada.",
+    "bytes": 22755
+  }
+]

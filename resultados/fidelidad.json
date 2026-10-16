@@ -1,0 +1,1982 @@
+[
+  {
+    "archivo": "00_baseline.pdf",
+    "operacion": "identidad",
+    "segundos": 0.1,
+    "tam_bytes_antes": 25771,
+    "tam_bytes_despues": 25771,
+    "estructura_antes": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 147,
+    "chars_texto_despues": 147,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 1,
+    "paginas_con_diferencias": 0,
+    "peor_pct_pixeles_distintos": 0.0,
+    "peor_diff_max_canal": 0,
+    "media_diff_absoluta": 0.0,
+    "pct_medio_pixeles_distintos": 0.0,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      }
+    ],
+    "veredicto": "IDENTICO"
+  },
+  {
+    "archivo": "00_baseline.pdf",
+    "operacion": "qpdf",
+    "segundos": 0.1,
+    "tam_bytes_antes": 25771,
+    "tam_bytes_despues": 46490,
+    "estructura_antes": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 147,
+    "chars_texto_despues": 147,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 1,
+    "paginas_con_diferencias": 0,
+    "peor_pct_pixeles_distintos": 0.0,
+    "peor_diff_max_canal": 0,
+    "media_diff_absoluta": 0.0,
+    "pct_medio_pixeles_distintos": 0.0,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      }
+    ],
+    "veredicto": "IDENTICO"
+  },
+  {
+    "archivo": "00_baseline.pdf",
+    "operacion": "libreoffice",
+    "segundos": 1.4,
+    "tam_bytes_antes": 25771,
+    "tam_bytes_despues": 21251,
+    "estructura_antes": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 147,
+    "chars_texto_despues": 147,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 1,
+    "paginas_con_diferencias": 1,
+    "peor_pct_pixeles_distintos": 0.6900028120643543,
+    "peor_diff_max_canal": 255,
+    "media_diff_absoluta": 0.732,
+    "pct_medio_pixeles_distintos": 0.69,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.69,
+        "diff_max_canal": 255,
+        "diff_media_abs": 0.732
+      }
+    ],
+    "veredicto": "CAMBIOS_MENORES"
+  },
+  {
+    "archivo": "01_texto_fragmentado.pdf",
+    "operacion": "identidad",
+    "segundos": 0.1,
+    "tam_bytes_antes": 28417,
+    "tam_bytes_despues": 28417,
+    "estructura_antes": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 1780,
+    "chars_texto_despues": 1780,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 1,
+    "paginas_con_diferencias": 0,
+    "peor_pct_pixeles_distintos": 0.0,
+    "peor_diff_max_canal": 0,
+    "media_diff_absoluta": 0.0,
+    "pct_medio_pixeles_distintos": 0.0,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      }
+    ],
+    "veredicto": "IDENTICO"
+  },
+  {
+    "archivo": "01_texto_fragmentado.pdf",
+    "operacion": "qpdf",
+    "segundos": 0.1,
+    "tam_bytes_antes": 28417,
+    "tam_bytes_despues": 70930,
+    "estructura_antes": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 1780,
+    "chars_texto_despues": 1780,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 1,
+    "paginas_con_diferencias": 0,
+    "peor_pct_pixeles_distintos": 0.0,
+    "peor_diff_max_canal": 0,
+    "media_diff_absoluta": 0.0,
+    "pct_medio_pixeles_distintos": 0.0,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      }
+    ],
+    "veredicto": "IDENTICO"
+  },
+  {
+    "archivo": "01_texto_fragmentado.pdf",
+    "operacion": "libreoffice",
+    "segundos": 1.4,
+    "tam_bytes_antes": 28417,
+    "tam_bytes_despues": 23962,
+    "estructura_antes": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 1780,
+    "chars_texto_despues": 1780,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 1,
+    "paginas_con_diferencias": 1,
+    "peor_pct_pixeles_distintos": 9.774616033553313,
+    "peor_diff_max_canal": 255,
+    "media_diff_absoluta": 14.021,
+    "pct_medio_pixeles_distintos": 9.775,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 9.775,
+        "diff_max_canal": 255,
+        "diff_media_abs": 14.021
+      }
+    ],
+    "veredicto": "RECONSTRUIDO"
+  },
+  {
+    "archivo": "02_fuente_subset.pdf",
+    "operacion": "identidad",
+    "segundos": 0.1,
+    "tam_bytes_antes": 80551,
+    "tam_bytes_despues": 80551,
+    "estructura_antes": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 155,
+    "chars_texto_despues": 155,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 1,
+    "paginas_con_diferencias": 0,
+    "peor_pct_pixeles_distintos": 0.0,
+    "peor_diff_max_canal": 0,
+    "media_diff_absoluta": 0.0,
+    "pct_medio_pixeles_distintos": 0.0,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      }
+    ],
+    "veredicto": "IDENTICO"
+  },
+  {
+    "archivo": "02_fuente_subset.pdf",
+    "operacion": "qpdf",
+    "segundos": 0.1,
+    "tam_bytes_antes": 80551,
+    "tam_bytes_despues": 82525,
+    "estructura_antes": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 155,
+    "chars_texto_despues": 155,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 1,
+    "paginas_con_diferencias": 0,
+    "peor_pct_pixeles_distintos": 0.0,
+    "peor_diff_max_canal": 0,
+    "media_diff_absoluta": 0.0,
+    "pct_medio_pixeles_distintos": 0.0,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      }
+    ],
+    "veredicto": "IDENTICO"
+  },
+  {
+    "archivo": "02_fuente_subset.pdf",
+    "operacion": "libreoffice",
+    "segundos": 1.4,
+    "tam_bytes_antes": 80551,
+    "tam_bytes_despues": 27224,
+    "estructura_antes": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 155,
+    "chars_texto_despues": 155,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 1,
+    "paginas_con_diferencias": 1,
+    "peor_pct_pixeles_distintos": 0.4001208589360824,
+    "peor_diff_max_canal": 253,
+    "media_diff_absoluta": 0.36,
+    "pct_medio_pixeles_distintos": 0.4,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.4,
+        "diff_max_canal": 253,
+        "diff_media_abs": 0.36
+      }
+    ],
+    "veredicto": "CAMBIOS_MENORES"
+  },
+  {
+    "archivo": "03_vectores_clip_degradado.pdf",
+    "operacion": "identidad",
+    "segundos": 0.1,
+    "tam_bytes_antes": 23664,
+    "tam_bytes_despues": 23664,
+    "estructura_antes": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 158,
+    "chars_texto_despues": 158,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 1,
+    "paginas_con_diferencias": 0,
+    "peor_pct_pixeles_distintos": 0.0,
+    "peor_diff_max_canal": 0,
+    "media_diff_absoluta": 0.0,
+    "pct_medio_pixeles_distintos": 0.0,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      }
+    ],
+    "veredicto": "IDENTICO"
+  },
+  {
+    "archivo": "03_vectores_clip_degradado.pdf",
+    "operacion": "qpdf",
+    "segundos": 0.1,
+    "tam_bytes_antes": 23664,
+    "tam_bytes_despues": 45353,
+    "estructura_antes": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 158,
+    "chars_texto_despues": 158,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 1,
+    "paginas_con_diferencias": 0,
+    "peor_pct_pixeles_distintos": 0.0,
+    "peor_diff_max_canal": 0,
+    "media_diff_absoluta": 0.0,
+    "pct_medio_pixeles_distintos": 0.0,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      }
+    ],
+    "veredicto": "IDENTICO"
+  },
+  {
+    "archivo": "03_vectores_clip_degradado.pdf",
+    "operacion": "libreoffice",
+    "segundos": 1.4,
+    "tam_bytes_antes": 23664,
+    "tam_bytes_despues": 34513,
+    "estructura_antes": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 158,
+    "chars_texto_despues": 158,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 1,
+    "paginas_con_diferencias": 1,
+    "peor_pct_pixeles_distintos": 0.6140172433392965,
+    "peor_diff_max_canal": 254,
+    "media_diff_absoluta": 0.464,
+    "pct_medio_pixeles_distintos": 0.614,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.614,
+        "diff_max_canal": 254,
+        "diff_media_abs": 0.464
+      }
+    ],
+    "veredicto": "CAMBIOS_MENORES"
+  },
+  {
+    "archivo": "04_imagen_smask.pdf",
+    "operacion": "identidad",
+    "segundos": 0.1,
+    "tam_bytes_antes": 190825,
+    "tam_bytes_despues": 190825,
+    "estructura_antes": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 123,
+    "chars_texto_despues": 123,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 1,
+    "paginas_con_diferencias": 0,
+    "peor_pct_pixeles_distintos": 0.0,
+    "peor_diff_max_canal": 0,
+    "media_diff_absoluta": 0.0,
+    "pct_medio_pixeles_distintos": 0.0,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      }
+    ],
+    "veredicto": "IDENTICO"
+  },
+  {
+    "archivo": "04_imagen_smask.pdf",
+    "operacion": "qpdf",
+    "segundos": 0.1,
+    "tam_bytes_antes": 190825,
+    "tam_bytes_despues": 282489,
+    "estructura_antes": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 123,
+    "chars_texto_despues": 123,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 1,
+    "paginas_con_diferencias": 0,
+    "peor_pct_pixeles_distintos": 0.0,
+    "peor_diff_max_canal": 0,
+    "media_diff_absoluta": 0.0,
+    "pct_medio_pixeles_distintos": 0.0,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      }
+    ],
+    "veredicto": "IDENTICO"
+  },
+  {
+    "archivo": "04_imagen_smask.pdf",
+    "operacion": "libreoffice",
+    "segundos": 1.4,
+    "tam_bytes_antes": 190825,
+    "tam_bytes_despues": 57961,
+    "estructura_antes": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 123,
+    "chars_texto_despues": 123,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 1,
+    "paginas_con_diferencias": 1,
+    "peor_pct_pixeles_distintos": 6.37476042607761,
+    "peor_diff_max_canal": 253,
+    "media_diff_absoluta": 1.68,
+    "pct_medio_pixeles_distintos": 6.375,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 6.375,
+        "diff_max_canal": 253,
+        "diff_media_abs": 1.68
+      }
+    ],
+    "veredicto": "RECONSTRUIDO"
+  },
+  {
+    "archivo": "05_cmyk_imprenta.pdf",
+    "operacion": "identidad",
+    "segundos": 0.1,
+    "tam_bytes_antes": 99519,
+    "tam_bytes_despues": 99519,
+    "estructura_antes": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 100,
+    "chars_texto_despues": 100,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 1,
+    "paginas_con_diferencias": 0,
+    "peor_pct_pixeles_distintos": 0.0,
+    "peor_diff_max_canal": 0,
+    "media_diff_absoluta": 0.0,
+    "pct_medio_pixeles_distintos": 0.0,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      }
+    ],
+    "veredicto": "IDENTICO"
+  },
+  {
+    "archivo": "05_cmyk_imprenta.pdf",
+    "operacion": "qpdf",
+    "segundos": 0.1,
+    "tam_bytes_antes": 99519,
+    "tam_bytes_despues": 118809,
+    "estructura_antes": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 100,
+    "chars_texto_despues": 100,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 1,
+    "paginas_con_diferencias": 0,
+    "peor_pct_pixeles_distintos": 0.0,
+    "peor_diff_max_canal": 0,
+    "media_diff_absoluta": 0.0,
+    "pct_medio_pixeles_distintos": 0.0,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      }
+    ],
+    "veredicto": "IDENTICO"
+  },
+  {
+    "archivo": "05_cmyk_imprenta.pdf",
+    "operacion": "libreoffice",
+    "segundos": 1.4,
+    "tam_bytes_antes": 99519,
+    "tam_bytes_despues": 56510,
+    "estructura_antes": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 100,
+    "chars_texto_despues": 100,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 1,
+    "paginas_con_diferencias": 1,
+    "peor_pct_pixeles_distintos": 11.797357856130002,
+    "peor_diff_max_canal": 222,
+    "media_diff_absoluta": 2.076,
+    "pct_medio_pixeles_distintos": 11.797,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 11.797,
+        "diff_max_canal": 222,
+        "diff_media_abs": 2.076
+      }
+    ],
+    "veredicto": "RECONSTRUIDO"
+  },
+  {
+    "archivo": "06_modos_de_texto.pdf",
+    "operacion": "identidad",
+    "segundos": 0.1,
+    "tam_bytes_antes": 43693,
+    "tam_bytes_despues": 43693,
+    "estructura_antes": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 239,
+    "chars_texto_despues": 239,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 1,
+    "paginas_con_diferencias": 0,
+    "peor_pct_pixeles_distintos": 0.0,
+    "peor_diff_max_canal": 0,
+    "media_diff_absoluta": 0.0,
+    "pct_medio_pixeles_distintos": 0.0,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      }
+    ],
+    "veredicto": "IDENTICO"
+  },
+  {
+    "archivo": "06_modos_de_texto.pdf",
+    "operacion": "qpdf",
+    "segundos": 0.1,
+    "tam_bytes_antes": 43693,
+    "tam_bytes_despues": 82235,
+    "estructura_antes": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 239,
+    "chars_texto_despues": 239,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 1,
+    "paginas_con_diferencias": 0,
+    "peor_pct_pixeles_distintos": 0.0,
+    "peor_diff_max_canal": 0,
+    "media_diff_absoluta": 0.0,
+    "pct_medio_pixeles_distintos": 0.0,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      }
+    ],
+    "veredicto": "IDENTICO"
+  },
+  {
+    "archivo": "06_modos_de_texto.pdf",
+    "operacion": "libreoffice",
+    "segundos": 1.4,
+    "tam_bytes_antes": 43693,
+    "tam_bytes_despues": 29837,
+    "estructura_antes": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 239,
+    "chars_texto_despues": 239,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 1,
+    "paginas_con_diferencias": 1,
+    "peor_pct_pixeles_distintos": 1.8471373783183853,
+    "peor_diff_max_canal": 255,
+    "media_diff_absoluta": 2.278,
+    "pct_medio_pixeles_distintos": 1.847,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 1.847,
+        "diff_max_canal": 255,
+        "diff_media_abs": 2.278
+      }
+    ],
+    "veredicto": "RECONSTRUIDO"
+  },
+  {
+    "archivo": "07_paginas_rotadas_mixtas.pdf",
+    "operacion": "identidad",
+    "segundos": 0.3,
+    "tam_bytes_antes": 24290,
+    "tam_bytes_despues": 24290,
+    "estructura_antes": {
+      "paginas": 5,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ],
+        [
+          841.89,
+          595.28
+        ],
+        [
+          595.28,
+          419.53
+        ],
+        [
+          595.28,
+          419.53
+        ],
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 5,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ],
+        [
+          841.89,
+          595.28
+        ],
+        [
+          595.28,
+          419.53
+        ],
+        [
+          595.28,
+          419.53
+        ],
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 167,
+    "chars_texto_despues": 167,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 5,
+    "paginas_con_diferencias": 0,
+    "peor_pct_pixeles_distintos": 0.0,
+    "peor_diff_max_canal": 0,
+    "media_diff_absoluta": 0.0,
+    "pct_medio_pixeles_distintos": 0.0,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 2,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 3,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 4,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 5,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      }
+    ],
+    "veredicto": "IDENTICO"
+  },
+  {
+    "archivo": "07_paginas_rotadas_mixtas.pdf",
+    "operacion": "qpdf",
+    "segundos": 0.4,
+    "tam_bytes_antes": 24290,
+    "tam_bytes_despues": 44707,
+    "estructura_antes": {
+      "paginas": 5,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ],
+        [
+          841.89,
+          595.28
+        ],
+        [
+          595.28,
+          419.53
+        ],
+        [
+          595.28,
+          419.53
+        ],
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 5,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ],
+        [
+          841.89,
+          595.28
+        ],
+        [
+          595.28,
+          419.53
+        ],
+        [
+          595.28,
+          419.53
+        ],
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 167,
+    "chars_texto_despues": 167,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 5,
+    "paginas_con_diferencias": 0,
+    "peor_pct_pixeles_distintos": 0.0,
+    "peor_diff_max_canal": 0,
+    "media_diff_absoluta": 0.0,
+    "pct_medio_pixeles_distintos": 0.0,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 2,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 3,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 4,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 5,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      }
+    ],
+    "veredicto": "IDENTICO"
+  },
+  {
+    "archivo": "07_paginas_rotadas_mixtas.pdf",
+    "operacion": "libreoffice",
+    "segundos": 1.7,
+    "tam_bytes_antes": 24290,
+    "tam_bytes_despues": 22721,
+    "estructura_antes": {
+      "paginas": 5,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ],
+        [
+          841.89,
+          595.28
+        ],
+        [
+          595.28,
+          419.53
+        ],
+        [
+          595.28,
+          419.53
+        ],
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 5,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 167,
+    "chars_texto_despues": 189,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 5,
+    "paginas_con_diferencias": 5,
+    "peor_pct_pixeles_distintos": 0.43520850825636725,
+    "peor_diff_max_canal": 255,
+    "media_diff_absoluta": 0.128,
+    "pct_medio_pixeles_distintos": 0.166,
+    "diferencia_de_tamano_en_alguna_pagina": true,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.03,
+        "diff_max_canal": 77,
+        "diff_media_abs": 0.014
+      },
+      {
+        "pagina": 2,
+        "recortado": true,
+        "shape_a": [
+          1191,
+          1684,
+          3
+        ],
+        "shape_b": [
+          1684,
+          1191,
+          3
+        ],
+        "pct_pixeles_distintos": 0.291,
+        "diff_max_canal": 255,
+        "diff_media_abs": 0.223
+      },
+      {
+        "pagina": 3,
+        "recortado": true,
+        "shape_a": [
+          840,
+          1191,
+          3
+        ],
+        "shape_b": [
+          1684,
+          1191,
+          3
+        ],
+        "pct_pixeles_distintos": 0.045,
+        "diff_max_canal": 247,
+        "diff_media_abs": 0.047
+      },
+      {
+        "pagina": 4,
+        "recortado": true,
+        "shape_a": [
+          840,
+          1191,
+          3
+        ],
+        "shape_b": [
+          1684,
+          1191,
+          3
+        ],
+        "pct_pixeles_distintos": 0.435,
+        "diff_max_canal": 251,
+        "diff_media_abs": 0.341
+      },
+      {
+        "pagina": 5,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.03,
+        "diff_max_canal": 77,
+        "diff_media_abs": 0.014
+      }
+    ],
+    "veredicto": "CAMBIOS_MENORES"
+  },
+  {
+    "archivo": "08_formularios_anotaciones.pdf",
+    "operacion": "identidad",
+    "segundos": 0.1,
+    "tam_bytes_antes": 29010,
+    "tam_bytes_despues": 29010,
+    "estructura_antes": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 136,
+    "chars_texto_despues": 136,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 1,
+    "paginas_con_diferencias": 0,
+    "peor_pct_pixeles_distintos": 0.0,
+    "peor_diff_max_canal": 0,
+    "media_diff_absoluta": 0.0,
+    "pct_medio_pixeles_distintos": 0.0,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      }
+    ],
+    "veredicto": "IDENTICO"
+  },
+  {
+    "archivo": "08_formularios_anotaciones.pdf",
+    "operacion": "qpdf",
+    "segundos": 0.1,
+    "tam_bytes_antes": 29010,
+    "tam_bytes_despues": 52181,
+    "estructura_antes": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 136,
+    "chars_texto_despues": 136,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 1,
+    "paginas_con_diferencias": 0,
+    "peor_pct_pixeles_distintos": 0.0,
+    "peor_diff_max_canal": 0,
+    "media_diff_absoluta": 0.0,
+    "pct_medio_pixeles_distintos": 0.0,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      }
+    ],
+    "veredicto": "IDENTICO"
+  },
+  {
+    "archivo": "08_formularios_anotaciones.pdf",
+    "operacion": "libreoffice",
+    "segundos": 1.4,
+    "tam_bytes_antes": 29010,
+    "tam_bytes_despues": 19893,
+    "estructura_antes": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 136,
+    "chars_texto_despues": 136,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 1,
+    "paginas_con_diferencias": 1,
+    "peor_pct_pixeles_distintos": 1.8484337200420413,
+    "peor_diff_max_canal": 247,
+    "media_diff_absoluta": 0.893,
+    "pct_medio_pixeles_distintos": 1.848,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 1.848,
+        "diff_max_canal": 247,
+        "diff_media_abs": 0.893
+      }
+    ],
+    "veredicto": "RECONSTRUIDO"
+  },
+  {
+    "archivo": "09_documento_grande.pdf",
+    "operacion": "identidad",
+    "segundos": 1.1,
+    "tam_bytes_antes": 306654,
+    "tam_bytes_despues": 306654,
+    "estructura_antes": {
+      "paginas": 300,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 300,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 35301,
+    "chars_texto_despues": 35301,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 12,
+    "paginas_con_diferencias": 0,
+    "peor_pct_pixeles_distintos": 0.0,
+    "peor_diff_max_canal": 0,
+    "media_diff_absoluta": 0.0,
+    "pct_medio_pixeles_distintos": 0.0,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 2,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 3,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 4,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 5,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 6,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 7,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 8,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 9,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 10,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 11,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 12,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      }
+    ],
+    "veredicto": "IDENTICO"
+  },
+  {
+    "archivo": "09_documento_grande.pdf",
+    "operacion": "qpdf",
+    "segundos": 1.2,
+    "tam_bytes_antes": 306654,
+    "tam_bytes_despues": 2637670,
+    "estructura_antes": {
+      "paginas": 300,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 300,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ],
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 35301,
+    "chars_texto_despues": 35301,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 12,
+    "paginas_con_diferencias": 0,
+    "peor_pct_pixeles_distintos": 0.0,
+    "peor_diff_max_canal": 0,
+    "media_diff_absoluta": 0.0,
+    "pct_medio_pixeles_distintos": 0.0,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 2,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 3,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 4,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 5,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 6,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 7,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 8,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 9,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 10,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 11,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      },
+      {
+        "pagina": 12,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      }
+    ],
+    "veredicto": "IDENTICO"
+  },
+  {
+    "archivo": "10_fuente_completa.pdf",
+    "operacion": "identidad",
+    "segundos": 0.1,
+    "tam_bytes_antes": 384157,
+    "tam_bytes_despues": 384157,
+    "estructura_antes": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 181,
+    "chars_texto_despues": 181,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 1,
+    "paginas_con_diferencias": 0,
+    "peor_pct_pixeles_distintos": 0.0,
+    "peor_diff_max_canal": 0,
+    "media_diff_absoluta": 0.0,
+    "pct_medio_pixeles_distintos": 0.0,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      }
+    ],
+    "veredicto": "IDENTICO"
+  },
+  {
+    "archivo": "10_fuente_completa.pdf",
+    "operacion": "qpdf",
+    "segundos": 0.1,
+    "tam_bytes_antes": 384157,
+    "tam_bytes_despues": 763928,
+    "estructura_antes": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 181,
+    "chars_texto_despues": 181,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 1,
+    "paginas_con_diferencias": 0,
+    "peor_pct_pixeles_distintos": 0.0,
+    "peor_diff_max_canal": 0,
+    "media_diff_absoluta": 0.0,
+    "pct_medio_pixeles_distintos": 0.0,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.0,
+        "diff_max_canal": 0,
+        "diff_media_abs": 0.0
+      }
+    ],
+    "veredicto": "IDENTICO"
+  },
+  {
+    "archivo": "10_fuente_completa.pdf",
+    "operacion": "libreoffice",
+    "segundos": 1.4,
+    "tam_bytes_antes": 384157,
+    "tam_bytes_despues": 18443,
+    "estructura_antes": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "estructura_despues": {
+      "paginas": 1,
+      "tamanos_pt": [
+        [
+          595.28,
+          841.89
+        ]
+      ]
+    },
+    "chars_texto_antes": 181,
+    "chars_texto_despues": 181,
+    "mismo_numero_paginas": true,
+    "paginas_comparadas": 1,
+    "paginas_con_diferencias": 1,
+    "peor_pct_pixeles_distintos": 0.7437511342990082,
+    "peor_diff_max_canal": 251,
+    "media_diff_absoluta": 0.6,
+    "pct_medio_pixeles_distintos": 0.744,
+    "diferencia_de_tamano_en_alguna_pagina": false,
+    "por_pagina": [
+      {
+        "pagina": 1,
+        "recortado": false,
+        "pct_pixeles_distintos": 0.744,
+        "diff_max_canal": 251,
+        "diff_media_abs": 0.6
+      }
+    ],
+    "veredicto": "CAMBIOS_MENORES"
+  }
+]

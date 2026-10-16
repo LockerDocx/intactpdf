@@ -1,0 +1,18 @@
+[Desktop Entry]
+Type=Application
+Name=IntactPDF (terminal)
+Name[es]=IntactPDF (terminal)
+Name[de]=IntactPDF (Terminal)
+Comment=The same editor, line by line, for scripts and servers
+Comment[es]=El mismo editor, línea a línea, para guiones y servidores
+Comment[de]=Derselbe Editor, Zeile für Zeile, für Skripte und Server
+# Es el mismo programa sin ventana: sirve para automatizar. Se declara como
+# aplicación de terminal a propósito para que el lanzador abra una consola; si
+# se abriese sin terminal no habría dónde escribir los comandos.
+Terminal=true
+Exec=intactpdf
+Icon=io.github.lockerdocx.IntactPDF
+Categories=Office;Graphics;ConsoleOnly;
+Keywords=pdf;editor;console;batch;
+StartupNotify=false
+NoDisplay=false

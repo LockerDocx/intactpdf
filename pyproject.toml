@@ -1,0 +1,84 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "intactpdf"
+version = "0.1.0"
+description = "Editor de PDF para Linux que no reconstruye el documento"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT OR Apache-2.0" }
+authors = [{ name = "IntactPDF" }]
+keywords = ["pdf", "editor", "linux", "incremental"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: X11 Applications :: GTK",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: Office/Business",
+]
+
+# Dependencias de EJECUCIÓN: solo lo que necesita el editor.
+#
+# Todas permisivas (BSD, Apache-2.0, MIT, MPL-2.0), coherente con la decisión B1.
+# Nada de PyMuPDF ni MuPDF, que son AGPL.
+#
+# Los wheels de pikepdf y pypdfium2 traen sus propias bibliotecas dentro
+# (libqpdf, libjpeg, libpdfium), así que en el sistema solo hacen falta libc,
+# libstdc++ y libz. Eso es lo que hace viable la distribución.
+dependencies = [
+    "pikepdf>=10.0",      # MPL-2.0
+    "pypdfium2>=4.0",     # Apache-2.0 / BSD-3
+    "fontTools>=4.0",     # MIT
+]
+
+[project.optional-dependencies]
+# La interfaz gráfica. PyGObject va atado a las bibliotecas de GTK que tenga el
+# sistema, así que NO se instala desde PyPI en condiciones normales: se instala
+# con el gestor de paquetes de la distribución (`python3-gi`, `gir1.2-gtk-4.0`,
+# `gir1.2-adw-1`), o viene ya dentro del runtime de Flatpak. Se deja aquí
+# declarado para que quede claro qué hace falta, no para que pip lo resuelva.
+gui = [
+    "PyGObject>=3.50",
+]
+# Lo que solo usan los tests y el arnés de medida, no el editor.
+test = [
+    "pypdf>=5.0",
+    "numpy>=1.26",
+    "pillow>=10",
+    "reportlab>=4",
+]
+# Para compilar el Flatpak hace falta además: flatpak-builder, org.gnome.Sdk
+dev = [
+    "intactpdf[test]",
+]
+
+[project.scripts]
+intactpdf = "nucleo.cli:main"
+# El lanzador de la ventana. Se separa del de consola porque son dos programas
+# distintos: `intactpdf` tiene que funcionar en un servidor sin pantalla ni GTK
+# instalado, y arrancar la ventana desde ahí fallaría.
+#
+# No apunta a `gui.ventana:main` a propósito: apunta a `gui.lanzar`, que antes
+# de nada comprueba si están PyGObject, GTK y libadwaita y, si no están, lo dice
+# con el comando exacto de la distribución del usuario. Si esto apuntara a
+# `ventana`, el fallo sería «ModuleNotFoundError: No module named 'gi'», que no
+# le sirve a nadie.
+intactpdf-gui = "gui.lanzar:main"
+
+[project.urls]
+Homepage = "https://github.com/LockerDocx/intactpdf"
+
+[tool.setuptools]
+# Solo se instala el núcleo. `tools/` y `tests/` son del repositorio, no del
+# programa: un usuario que instale esto no necesita el generador del corpus ni
+# el arnés de fidelidad.
+packages = ["nucleo", "gui"]
+include-package-data = false
+
+[tool.setuptools.package-data]
+# Si algún día se empaquetan fuentes con la aplicación (necesario dentro de un
+# Flatpak, donde no se ve /usr/share/fonts del anfitrión), van aquí.
+nucleo = ["fuentes/*.ttf", "fuentes/*.otf"]

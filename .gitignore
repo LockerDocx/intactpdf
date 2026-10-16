@@ -1,0 +1,14 @@
+# Salidas de construcción: no viajan con el código, se reconstruyen.
+# Ojo: el AppImage y la rueda que se publican viven aquí, así que un clon
+# recién hecho no los tiene: hay que construirlos (packaging/appimage/construir.sh)
+# o bajarlos de la página de versiones.
+dist/
+build-dir/
+*.egg-info/
+__pycache__/
+*.pyc
+.pytest_cache/
+.tmp/
+
+# El fichero de sumas tampoco: se genera al publicar.
+SHA256SUMS
