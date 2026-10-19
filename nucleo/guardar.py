@@ -519,7 +519,13 @@ def rotar_pagina(
         if num_pagina >= len(pdf.pages):
             raise ErrorGuardado(f"página {num_pagina} fuera de rango (el documento tiene {len(pdf.pages)})")
         pagina = pdf.pages[num_pagina]
-        rot_actual = int(pagina.get("/Rotate", 0))
+        rot_actual = 0
+        nodo = pagina.obj
+        while nodo:
+            if "/Rotate" in nodo:
+                rot_actual = int(nodo.Rotate)
+                break
+            nodo = nodo.get("/Parent")
         nueva_rot = (rot_actual + angulo) % 360
 
         pagina.Rotate = nueva_rot
@@ -535,8 +541,12 @@ def rotar_pagina(
             backup = ruta_salida.with_name(f"{ruta_salida.name}~")
             try:
                 shutil.copy2(ruta_salida, backup)
-            except Exception:
-                pass
+            except Exception as e:
+                tmp_salida.unlink(missing_ok=True)
+                raise ErrorGuardado(
+                    f"No se pudo crear la copia de seguridad de respaldo ({backup}): {e}. "
+                    "Operación cancelada para proteger el archivo original."
+                )
         tmp_salida.replace(ruta_salida)
         return informe
     except Exception:
@@ -577,10 +587,21 @@ def extraer_imagen(
             nombre_normalizado = encontrado
 
         xobj = xobjs[nombre_normalizado]
+        formato = ruta_salida.suffix.lower()
+
+        # Si el XObject ya está en JPEG (/DCTDecode) y la salida es .jpg/.jpeg,
+        # extraemos el flujo binario crudo directamente sin decodificar ni recomprimir
+        filtro = xobj.get("/Filter")
+        es_dct = (filtro == pikepdf.Name("/DCTDecode") or
+                  (isinstance(filtro, pikepdf.Array) and len(filtro) == 1 and filtro[0] == pikepdf.Name("/DCTDecode")))
+        if es_dct and formato in (".jpg", ".jpeg"):
+            ruta_salida.write_bytes(bytes(xobj.read_raw_bytes()))
+            return ruta_salida
+
+        # En cualquier otro caso, decodificar mediante pikepdf/Pillow
         pdf_image = pikepdf.PdfImage(xobj)
         pil_img = pdf_image.as_pil_image()
 
-    formato = ruta_salida.suffix.lower()
     if formato in (".jpg", ".jpeg"):
         if pil_img.mode in ("RGBA", "P"):
             pil_img = pil_img.convert("RGB")
@@ -637,17 +658,36 @@ def reemplazar_imagen(
 
         xobj = xobjs[nombre_normalizado]
         num_obj, gen_obj = xobj.objgen
+        size_trailer = int(pdf.trailer.get("/Size", 0))
 
     # Cargar y codificar la nueva imagen con Pillow
     with Image.open(str(ruta_nueva_imagen)) as img:
         ancho, alto = img.size
-        # Normalizar a RGB o L (escala de grises)
+        extra_smask = None
+        num_smask = size_trailer + 1
+
+        # Normalizar a RGB, RGBA, L o CMYK
         if img.mode == "L":
             cs = b"/DeviceGray"
             raw_bytes = img.tobytes()
-        elif img.mode in ("RGB", "RGBA"):
+        elif img.mode == "RGBA":
             cs = b"/DeviceRGB"
-            raw_bytes = img.convert("RGB").tobytes()
+            r, g, b, a = img.split()
+            raw_bytes = Image.merge("RGB", (r, g, b)).tobytes()
+            # Si contiene píxeles transparentes, crear Soft Mask (/SMask) estándar ISO 32000
+            if a.getextrema()[0] < 255:
+                alpha_bytes = a.tobytes()
+                alpha_payload = zlib.compress(alpha_bytes, 9)
+                extra_smask = (
+                    b"<< /Type /XObject /Subtype /Image "
+                    b"/Width " + str(ancho).encode("ascii") + b" "
+                    b"/Height " + str(alto).encode("ascii") + b" "
+                    b"/BitsPerComponent 8 "
+                    b"/ColorSpace /DeviceGray "
+                    b"/Filter /FlateDecode "
+                    b"/Length " + str(len(alpha_payload)).encode("ascii") + b" >>\nstream\n"
+                    + alpha_payload + b"\nendstream"
+                )
         elif img.mode == "CMYK":
             cs = b"/DeviceCMYK"
             raw_bytes = img.tobytes()
@@ -656,18 +696,22 @@ def reemplazar_imagen(
             raw_bytes = img.convert("RGB").tobytes()
 
     payload = zlib.compress(raw_bytes, 9)
+    smask_ref = f"/SMask {num_smask} 0 R ".encode("ascii") if extra_smask else b""
     cabecera = (
         b"<< /Type /XObject /Subtype /Image "
         b"/Width " + str(ancho).encode("ascii") + b" "
         b"/Height " + str(alto).encode("ascii") + b" "
         b"/BitsPerComponent 8 "
         b"/ColorSpace " + cs + b" "
+        + smask_ref +
         b"/Filter /FlateDecode "
         b"/Length " + str(len(payload)).encode("ascii") + b" >>\nstream\n"
     )
     cuerpo_xobj = cabecera + payload + b"\nendstream"
 
     objetos = {(num_obj, gen_obj): cuerpo_xobj}
+    if extra_smask:
+        objetos[(num_smask, 0)] = extra_smask
 
     tmp_salida = ruta_salida.with_name(f".{ruta_salida.name}.{uuid.uuid4().hex[:8]}.tmp")
     try:
@@ -676,8 +720,12 @@ def reemplazar_imagen(
             backup = ruta_salida.with_name(f"{ruta_salida.name}~")
             try:
                 shutil.copy2(ruta_salida, backup)
-            except Exception:
-                pass
+            except Exception as e:
+                tmp_salida.unlink(missing_ok=True)
+                raise ErrorGuardado(
+                    f"No se pudo crear la copia de seguridad de respaldo ({backup}): {e}. "
+                    "Operación cancelada para proteger el archivo original."
+                )
         tmp_salida.replace(ruta_salida)
         return informe
     except Exception:

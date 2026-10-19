@@ -666,12 +666,27 @@ instalar_icono() {
              "$AQUI/icons/$ID_APP.svg"; do
         [ -f "$f" ] && icono="$f" && break
     done
-    [ -n "$icono" ] || return 0
-    if [ "$SIMULAR" = "" ]; then
+    if [ "$SIMULAR" = "" ] && [ -n "$icono" ]; then
         mkdir -p "$PREFIJO/share/icons/hicolor/scalable/apps"
         cp -f "$icono" "$PREFIJO/share/icons/hicolor/scalable/apps/$ID_APP.svg"
+        cp -f "$icono" "$PREFIJO/share/icons/hicolor/scalable/apps/intactpdf.svg" 2>/dev/null || true
     fi
-    hecho "icono instalado"
+    # También instalar resoluciones PNG si existen
+    if [ "$SIMULAR" = "" ]; then
+        for sz in 16 24 32 48 64 128 256 512; do
+            png_orig="$AQUI/packaging/icons/${sz}x${sz}/$ID_APP.png"
+            if [ -f "$png_orig" ]; then
+                mkdir -p "$PREFIJO/share/icons/hicolor/${sz}x${sz}/apps"
+                cp -f "$png_orig" "$PREFIJO/share/icons/hicolor/${sz}x${sz}/apps/$ID_APP.png"
+                cp -f "$png_orig" "$PREFIJO/share/icons/hicolor/${sz}x${sz}/apps/intactpdf.png" 2>/dev/null || true
+            fi
+        done
+        mkdir -p "$PREFIJO/share/pixmaps"
+        [ -n "$icono" ] && cp -f "$icono" "$PREFIJO/share/pixmaps/$ID_APP.svg" 2>/dev/null || true
+        hay update-desktop-database && update-desktop-database "$PREFIJO/share/applications" 2>/dev/null || true
+        hay gtk-update-icon-cache && gtk-update-icon-cache -qtf "$PREFIJO/share/icons/hicolor" 2>/dev/null || true
+    fi
+    hecho "icono e integración de escritorio instalados"
 }
 
 instalar_pip() {

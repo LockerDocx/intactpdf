@@ -398,3 +398,53 @@ def test_extraer_y_reemplazar_imagen():
         assert int(xobj.Height) == 50
 
 
+def test_reemplazar_imagen_con_transparencia_smask():
+    """Reemplazar por una imagen RGBA con transparencia genera máscara /SMask estándar."""
+    from PIL import Image
+    from nucleo.guardar import reemplazar_imagen
+
+    orig = CORPUS / "04_imagen_smask.pdf"
+    with pikepdf.open(orig) as pdf:
+        nombre_xobj = list(pdf.pages[0].Resources.XObject.keys())[0]
+
+    # Crear imagen con canal alfa real (mitad transparente)
+    nueva_img_rgba = TMP / "transparente.png"
+    im = Image.new("RGBA", (60, 40), (255, 0, 0, 120))
+    im.save(nueva_img_rgba)
+
+    pdf_salida = TMP / "img_con_smask.pdf"
+    pdf_salida.unlink(missing_ok=True)
+    info = reemplazar_imagen(orig, pdf_salida, 0, nombre_xobj, nueva_img_rgba)
+    assert info.prefijo_intacto is True
+
+    with pikepdf.open(pdf_salida) as pdf_res:
+        xobj = pdf_res.pages[0].Resources.XObject[nombre_xobj]
+        assert "/SMask" in xobj, "El XObject debe incluir /SMask para preservar la transparencia"
+        smask = xobj.SMask
+        assert str(smask.ColorSpace) == "/DeviceGray"
+        assert int(smask.Width) == 60
+        assert int(smask.Height) == 40
+
+
+def test_rotar_pagina_con_rotacion_heredada():
+    """Rotar respeta y acumula /Rotate cuando está definido en un nodo ancestro /Pages."""
+    from nucleo.guardar import rotar_pagina
+    # Crear un PDF temporal con rotación heredada de 90° en el nodo /Pages
+    pdf_base = pikepdf.Pdf.new()
+    pdf_base.add_blank_page(page_size=(200, 200))
+    # Colocar /Rotate 90 en el padre /Pages
+    padre = pdf_base.pages[0].obj.Parent
+    padre.Rotate = 90
+    ruta_heredada = TMP / "rotacion_heredada_90.pdf"
+    pdf_base.save(ruta_heredada)
+    pdf_base.close()
+
+    # Ahora rotamos 90° adicionales con rotar_pagina
+    salida_rotada = TMP / "rotacion_heredada_180.pdf"
+    salida_rotada.unlink(missing_ok=True)
+    rotar_pagina(ruta_heredada, salida_rotada, 0, 90)
+
+    with pikepdf.open(salida_rotada) as pdf_res:
+        assert int(pdf_res.pages[0].Rotate) == 180
+
+

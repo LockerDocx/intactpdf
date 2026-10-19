@@ -44,18 +44,18 @@ La interfaz gráfica utiliza GTK4 y Libadwaita, organizada mediante una cinta de
 - Incrustación de subconjuntos de fuentes del sistema cuando el texto editado introduce nuevos glifos.
 
 ### Manipulación de imágenes
-- Sustitución de imagen (`replace-image`): reemplaza un XObject de imagen existente por un nuevo archivo (PNG, JPEG o WebP), conservando la posición, matriz de transformación y dimensiones del elemento original.
-- Extracción de imagen (`extract-image`): exporta a disco imágenes incrustadas con su formato y resolución nativos sin recompresión.
+- Sustitución de imagen (`replace-image`): reemplaza un XObject de imagen existente por un nuevo archivo (PNG, JPEG o WebP), conservando la posición, matriz de transformación y dimensiones del elemento original. Si la imagen incluye canal alfa (transparencia), genera automáticamente la máscara `/SMask` en escala de grises según la especificación ISO 32000.
+- Extracción de imagen (`extract-image`): si la imagen está codificada como JPEG (`/DCTDecode`), extrae directamente el flujo binario original sin decodificar ni recomprimir; para el resto de formatos, exporta a PNG sin pérdidas.
 
 ### Transformaciones geométricas y estructura
 - Desplazamiento de objetos mediante coordenadas numéricas en puntos tipográficos (`pt`) o arrastre interactivo con el ratón.
 - Escalado proporcional preservando el estado gráfico del resto de la página.
-- Rotación de páginas (`rotate`): giro puntual en 90°, 180° o 270° modificando exclusivamente la entrada `/Rotate` del diccionario de página en la revisión incremental.
+- Rotación de páginas (`rotate`): giro puntual en 90°, 180° o 270° modificando exclusivamente la entrada `/Rotate` del diccionario de página en la revisión incremental y acumulando rotaciones heredadas desde nodos padre `/Pages`.
 - Eliminación de operadores en el flujo de contenido sin alterar los offsets del resto del archivo.
 
 ### Seguridad y revisión
-- Alerta de firmas digitales: advertencia visual persistente si el documento contiene estructuras de firma electrónica (`/Sig`, `/ByteRange`, `/AcroForm`), avisando de que cualquier modificación puede invalidar su vigencia jurídica.
-- Compactación y redacción (`compact`): al ser incremental, los elementos borrados continúan en revisiones previas del binario. El comando `compact` purga irreversiblemente el historial y reescribe solo los objetos activos cuando se requiere privacidad definitiva.
+- Alerta de firmas digitales: advertencia visual preventiva si el documento contiene estructuras de firma electrónica (`/Sig`, `/ByteRange`, `/AcroForm`), avisando de que cualquier modificación puede invalidar las firmas existentes.
+- Purga de revisiones (`compact`): al ser un guardado incremental, los elementos borrados continúan residiendo en las revisiones anteriores del binario. El comando `compact` purga el historial previo y reescribe solo los objetos activos en un archivo limpio.
 - Descifrado (`decrypt`): remueve el cifrado en documentos protegidos con contraseña de lectura conocida antes de la edición.
 
 ### Ergonomía y atajos
@@ -147,7 +147,7 @@ python3 tools/test_aceptacion.py
 ```
 
 Resultados de la suite:
-- 118 pruebas unitarias aprobadas (0 fallos, 4 omitidas correspondientes a artefactos de empaquetado release).
+- 120 pruebas unitarias aprobadas (0 fallos, 4 omitidas correspondientes a artefactos de empaquetado release).
 - 19 de 19 casos de aceptación visual superados: 0 píxeles alterados fuera del área seleccionada.
 - Verificación de prefijo binario idéntico en las 19 operaciones del corpus de control.
 
