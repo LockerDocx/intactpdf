@@ -1,152 +1,297 @@
 # IntactPDF
 
-[![CI](https://github.com/LockerDocx/intactpdf/actions/workflows/ci.yml/badge.svg)](https://github.com/LockerDocx/intactpdf/actions)
-[![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE-MIT)
-[![Python: 3.10+](https://img.shields.io/badge/Python-3.10%2B-brightgreen.svg)](pyproject.toml)
-[![UI: GTK4 + Libadwaita](https://img.shields.io/badge/UI-GTK4%20%2B%20Libadwaita-purple.svg)](gui/ventana.py)
+<p align="center">
+  <img src="packaging/intactpdf.png" alt="IntactPDF Logo" width="128" height="128">
+</p>
 
-**Editor de PDF nativo para Linux que modifica objetos sin reconstruir el documento.**
+<p align="center">
+  <strong>Editor estructural de PDF nativo para Linux diseñado para modificar objetos existentes preservando el 100% del documento original.</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/LockerDocx/intactpdf/actions"><img src="https://github.com/LockerDocx/intactpdf/actions/workflows/ci.yml/badge.svg" alt="CI Status"></a>
+  <a href="LICENSE-MIT"><img src="https://img.shields.io/badge/Licencia-MIT%20OR%20Apache--2.0-blue.svg" alt="Licencia"></a>
+  <a href="pyproject.toml"><img src="https://img.shields.io/badge/Python-3.10%2B-brightgreen.svg" alt="Versión Python"></a>
+  <a href="gui/ventana.py"><img src="https://img.shields.io/badge/GUI-GTK4%20%2B%20Libadwaita-purple.svg" alt="Tecnología de Interfaz"></a>
+  <img src="https://img.shields.io/badge/Plataforma-Linux%20Nativo-orange.svg" alt="Plataforma">
+  <img src="https://img.shields.io/badge/Tests-118%20passed-success.svg" alt="Tests">
+</p>
 
 ---
 
 ## 🎯 ¿Por qué existe IntactPDF?
 
-Cuando abres un PDF en LibreOffice Draw, Inkscape o muchos editores convencionales y guardas, ocurre un desastre silencioso: **el documento entero es parseado, transformado a un modelo vectorial ajeno y reconstruido desde cero**.
+Cuando abres un PDF en **LibreOffice Draw**, **Inkscape** u otros editores convencionales y guardas, ocurre una alteración silenciosa: **el archivo completo es parseado, reinterpretado en un modelo vectorial ajeno y reconstruido desde cero**.
 
-El resultado empírico comprobado:
-- Se destruyen perfiles CMYK e imprenta comercial.
-- Se pierden metadatos, formularios AcroForm y capas OCG.
-- Las fuentes incrustadas se sustituyen o desalinean.
-- Un documento sin editar alterado por LibreOffice Draw cambia entre el **0.4% y el 11.8% de los píxeles de cada página**.
+### El coste de la reconstrucción tradicional
+* ❌ **Destrucción de perfiles de color:** Espacios CMYK, separación de tintas y perfiles ICC de imprenta se convierten o aplanan a RGB.
+* ❌ **Pérdida de metadatos y firmas:** Se descartan formularios AcroForm, firmas electrónicas, capas de contenido opcional (OCG) y marcas de recorte.
+* ❌ **Descalibre tipográfico:** Fuentes incrustadas o subconjuntos (*font subsets*) se descomponen o sustituyen por fuentes del sistema, alterando el espaciado entre caracteres.
+* ❌ **Ruido visual comprobado:** Un PDF abierto y guardado en LibreOffice Draw sin realizar ningún cambio altera empíricamente entre el **0.4% y el 11.8% de los píxeles** de cada página.
 
-### La Promesa IntactPDF
+### El Principio IntactPDF
 
-> **«Modifica exactamente lo que seleccionas. Preserva el 100% de todo lo demás.»**
+> **«Modifica con precisión quirúrgica el objeto seleccionado. Preserva intactos todos los demás bytes del documento original.»**
 
-1. **Guardado incremental estricto (ISO 32000-1 §7.5.6):** El fichero resultante **comienza byte a byte por los datos exactos del original**. Las ediciones y nuevos objetos se indexan al final en una tabla xref incremental.
-2. **Prueba de humo y preservación de tinta:** Antes de confirmar el guardado, un motor independiente (`pdfium`) renderiza la página y comprueba que sigue visible y que ningún píxel fuera de la región seleccionada ha cambiado.
-3. **Escritura atómica con copia de seguridad:** Guardado seguro por etapas temporales (`staging`) y creación automática de respaldo (`archivo.pdf~`).
+```
+PDF Original
+┌────────────────────────────────────────────────────────┐
+│  Cabecera, Metadatos, Fuentes incrustadas, Formulario  │
+│  Streams de contenido, Imágenes, Estructuras complejas │
+└────────────────────────────────────────────────────────┘
+                           ▼
+Guardado Incremental IntactPDF (ISO 32000-1 §7.5.6)
+┌────────────────────────────────────────────────────────┐
+│  Bytes originales íntegros (100% prefijo inalterado)   │
+├────────────────────────────────────────────────────────┤
+│  + Nuevos objetos o revisiones quirúrgicas             │
+│  + Tabla de referencias cruzadas incremental (xref)    │
+│  + Nuevo trailer con puntero /Prev a la revisión previa│
+└────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## 📸 Interfaz Gráfica (GTK4 + Libadwaita)
+## ⚖️ Comparativa Técnica con Otros Editores
 
-IntactPDF incluye una interfaz moderna adaptada a los estándares de GNOME / Libadwaita con **cinta de opciones contextual**:
+| Característica | LibreOffice Draw | Inkscape | Adobe Acrobat | **IntactPDF** |
+| :--- | :---: | :---: | :---: | :---: |
+| **Arquitectura de guardado** | Reconstrucción total | Reconstrucción SVG | Incremental (propietario) | **Incremental estricto (ISO)** |
+| **Prefijo de bytes original** | 0% (se destruye) | 0% (se destruye) | Parcial / Variable | **100% idéntico verificado** |
+| **Preservación CMYK / Imprenta** | ❌ Convierte a RGB | ❌ Parcial | ✅ Sí | ✅ **Preservación total** |
+| **Edición localizada sin reflow** | ❌ Reorganiza cajas | ❌ Reorganiza | ✅ Sí | ✅ **Sí (ajuste métrico Tc)** |
+| **Sustitución in situ de imágenes** | ❌ Recomprime página | ❌ Recomprime | ✅ Sí | ✅ **In-place en XObject** |
+| **Rotación sin recomprimir** | ❌ Recompone | ❌ Recompone | ✅ Sí | ✅ **Actualización /Rotate** |
+| **Uso de recursos y dependencias** | Pesado (suite) | Pesado | De pago / No Linux | **Ligero / GTK4 nativo Linux** |
+| **Uso en scripts / automatización (CLI)**| ❌ No | Limitado | ❌ No nativo en Linux | ✅ **CLI completo integrado** |
 
-| Vista Inicial | Selección e Inspección de Objetos |
+---
+
+## 📸 Galería de la Interfaz Gráfica (GTK4 + Libadwaita)
+
+IntactPDF ofrece una experiencia de escritorio moderna, perfectamente integrada en GNOME y escritorios Linux compatibles con temas claros y oscuros.
+
+### 1. Vista General e Inspección de Objetos
+La interfaz organiza el documento en una vista central de alta fidelidad (`pdfium`) con un panel lateral que lista todos los objetos vectoriales, imágenes y bloques de texto identificados:
+
+| Vista Inicial de Lectura | Inspección y Selección de Objeto |
 | :---: | :---: |
 | ![Recién abierto](docs/capturas/01-recien-abierto.png) | ![Selección](docs/capturas/02-seleccion.png) |
+
+---
+
+### 2. Cinta de Opciones Contextual
+La barra superior organiza las herramientas por categorías especializadas, activando o desactivando controles según el tipo de objeto seleccionado:
 
 | Pestaña Objeto (Mover, Escalar, Reemplazar Imagen) | Pestaña Texto (Edición con preservación tipográfica) |
 | :---: | :---: |
 | ![Cinta Objeto](docs/capturas/06-cinta-objeto.png) | ![Cinta Texto](docs/capturas/07-cinta-texto.png) |
 
+| Pestaña Página (Rotación incremental 90°/180°/270°) | Pestaña Ver (Zoom continuo y ajuste de página) |
+| :---: | :---: |
+| ![Cinta Página](docs/capturas/08-cinta-pagina.png) | ![Cinta Ver](docs/capturas/09-cinta-ver.png) |
+
 ---
 
-## ⚡ Características Principales
+### 3. Edición en Vivo y Rotación
+Previsualiza de forma instantánea cualquier modificación de texto o rotación antes de confirmar el guardado:
 
-- **Edición de texto quirúrgica:** Sustitución directa de bytes (nivel 1a), compresión/expansión de cadenas con ajuste métrico de espaciado `Tc` (nivel 1b) o incrustación de subconjuntos de fuentes del sistema sin tocar las fuentes del documento original (nivel 2).
-- **Gestión completa de imágenes:**
-  - **Sustitución de imagen:** Cambia un logotipo, foto o firma por una nueva imagen (PNG/JPG) manteniendo exactamente las dimensiones, matriz de transformación y posición en el documento.
-  - **Extracción de imagen:** Exporta ilustraciones incrustadas con su resolución nativa a disco.
-- **Transformaciones geométricas:** Desplazamiento preciso en puntos (`pt`), arrastre con el ratón y escalado porcentual.
-- **Eliminación y redacción segura:** Borrado de operadores en el stream y comando `compact` para purgar irreversiblemente el historial de revisiones previas y objetos descartados.
-- **Seguridad legal:** Detección automática y alerta persistente (`Adw.Banner`) si el documento contiene firmas digitales criptográficas (`/Sig`, `/ByteRange`).
-- **Navegación fluida:** Zoom continuo mediante `Ctrl + Rueda del ratón`, atajos rápidos (`Ctrl++`, `Ctrl+-`, `Ctrl+0`) y copia de texto seleccionado al portapapeles (`Ctrl+C`).
-- **Historial de edición:** Sistema robusto de **Deshacer (`Ctrl+Z`)** y **Rehacer (`Ctrl+Shift+Z` / `Ctrl+Y`)** gestionado en memoria de sesión.
-- **Gestión de orientación:** Rotación puntual de páginas en 90°, 180° o 270° mediante actualización pura del diccionario `/Rotate`.
-- **Descifrado integrado:** Comando `decrypt` para remover cifrados compatibles antes de la edición incremental.
+| Previsualización de Texto Modificado | Rotación de Páginas con Miniaturas |
+| :---: | :---: |
+| ![Texto Cambiado](docs/capturas/04-texto-cambiado.png) | ![Páginas Giradas](docs/capturas/05-paginas-giradas.png) |
+
+---
+
+## ⚡ Capacidades y Características
+
+### 🔤 Edición Tipográfica de Texto
+* **Reemplazo directo de bytes:** Si la nueva cadena coincide en longitud y codificación con la original, se actualiza directamente sin añadir un solo byte adicional.
+* **Ajuste métrico de espaciado (`Tc`):** Para textos con ligeras variaciones de longitud, se compensa el espaciado entre glifos para evitar desbordamientos visuales sin romper la alineación de la línea.
+* **Incrustación de subconjuntos:** Soporte para insertar nuevos caracteres conservando el estilo y métrica de las fuentes originales.
+
+### 🖼️ Manipulación Completa de Imágenes
+* **Reemplazo de imagen (`replace-image`):** Permite cambiar cualquier imagen, logotipo o firma por un nuevo archivo (PNG, JPEG, WebP) conservando exactamente la posición, matriz de transformación y dimensiones del objeto original en la página.
+* **Extracción de imagen (`extract-image`):** Exporta imágenes incrustadas a disco en su formato y resolución nativos sin recomprimir ni perder calidad.
+
+### 📐 Transformaciones Geométricas
+* **Desplazamiento y arrastre:** Mueve objetos mediante coordenadas en puntos tipográficos (`pt`) o de forma interactiva con el ratón.
+* **Escalado proporcional:** Escala ilustraciones o bloques vectoriales preservando el estado gráfico posterior del PDF.
+
+### 🔄 Rotación de Páginas
+* **Rotación limpia en 90°, 180° o 270°:** Modifica únicamente el diccionario `/Rotate` de la página especificada en la revisión incremental, sin descomprimir ni reinterpretar los streams de contenido.
+
+### 🛡️ Seguridad Legal y Calidad de Guardado
+* **Alerta visual de firmas digitales:** Si el PDF contiene firmas electrónicas criptográficas (`/Sig`, `/ByteRange`, `/AcroForm`), IntactPDF muestra una advertencia visible (`Adw.Banner`) alertando de que modificar el documento puede invalidar la validez jurídica de las firmas existentes.
+* **Guardado sobre el original con respaldo:** Guarda directamente sobre el archivo original de forma atómica (usando un archivo temporal `staging`) y genera automáticamente una copia de seguridad `archivo.pdf~`.
+* **Compactación / Redacción segura (`compact`):** Al ser incremental, los objetos eliminados residen en las revisiones anteriores del binario. El comando `compact` purga irreversiblemente el historial y reescribe solo los objetos activos cuando se necesita privacidad absoluta.
+* **Descifrado (`decrypt`):** Permite remover restricciones de contraseñas de lectura conocidas antes de iniciar una sesión de edición.
+
+### 🖱️ Ergonomía y Atajos
+* **Zoom continuo:** `Ctrl + Rueda del ratón` o mediante `Ctrl + +`, `Ctrl + -` y `Ctrl + 0` (ajuste a la ventana).
+* **Copiar al portapapeles:** `Ctrl + C` copia directamente el contenido del bloque de texto seleccionado.
+* **Historial completo:** `Ctrl + Z` para Deshacer y `Ctrl + Shift + Z` (o `Ctrl + Y`) para Rehacer.
+
+---
+
+## 🏛️ Arquitectura del Sistema
+
+```
+                      ┌────────────────────────┐
+                      │     IntactPDF GUI      │  (GTK4 + Libadwaita)
+                      │    (gui/ventana.py)    │
+                      └───────────┬────────────┘
+                                  │
+┌────────────────────────┐        │        ┌────────────────────────┐
+│     IntactPDF CLI      ├────────┼────────┤    Python API / SDK    │
+│    (nucleo/cli.py)     │        │        │   (nucleo/editar.py)   │
+└───────────┬────────────┘        │        └───────────┬────────────┘
+            │                     │                    │
+            └─────────────────────┼────────────────────┘
+                                  ▼
+           ┌──────────────────────────────────────────────┐
+           │             NÚCLEO ESTRUCTURAL               │
+           ├──────────────────────┬───────────────────────┤
+           │  nucleo/parser.py    │  nucleo/geometria.py  │
+           │  nucleo/objetos.py   │  nucleo/fuentes.py    │
+           │  nucleo/alinear.py   │  nucleo/editar_txt.py │
+           └──────────────────────┴───────────────────────┘
+                                  │
+                                  ▼
+           ┌──────────────────────────────────────────────┐
+           │      GUARDADO INCREMENTAL & VALIDACIÓN       │
+           ├──────────────────────────────────────────────┤
+           │  nucleo/guardar.py                           │
+           │  - Escritura incremental ISO 32000-1         │
+           │  - Staging atómico + backup .pdf~            │
+           │  - Verificación visual de tinta (pdfium)     │
+           │  - Validación de prefijo binario             │
+           └──────────────────────────────────────────────┘
+```
 
 ---
 
 ## 🚀 Instalación y Uso
 
-### 1. Instalación Universal sin permisos de root (Recomendado)
+### 📦 Opción 1: Instalación sin permisos de root (Recomendado)
 
-En cualquier distribución Linux moderna (incluyendo **openSUSE Leap**, **openSUSE Tumbleweed**, Fedora, Debian, Ubuntu o Arch):
+Ideal para cualquier usuario en **openSUSE Leap / Tumbleweed**, **Fedora**, **Ubuntu**, **Debian**, **Arch Linux** o entornos corporativos donde no tienes acceso a `root` / `sudo`:
 
 ```bash
-# Opción A: Mediante el instalador automático
-./instalar.sh
+# 1. Clonar el repositorio
+git clone https://github.com/LockerDocx/intactpdf.git
+cd intactpdf
 
-# Opción B: Con un entorno virtual de usuario (sin root)
+# 2. Crear entorno virtual de usuario con acceso a las librerías del sistema
 python3 -m venv ~/.local/share/intactpdf-env --system-site-packages
+
+# 3. Instalar el paquete en modo editable
 ~/.local/share/intactpdf-env/bin/pip install -e .
-mkdir -p ~/.local/bin
-ln -sf ~/.local/share/intactpdf-env/bin/intactpdf ~/.local/bin/intactpdf
-ln -sf ~/.local/share/intactpdf-env/bin/intactpdf-gui ~/.local/bin/intactpdf-gui
+
+# 4. Añadir al PATH de tu usuario (si no lo tienes ya)
+echo 'export PATH="$HOME/.local/share/intactpdf-env/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+
+# 5. ¡Listo! Puedes lanzar la interfaz o usar el CLI:
+intactpdf-gui            # Abre la interfaz gráfica
+intactpdf info test.pdf  # Inspecciona un PDF desde la terminal
 ```
 
-> **Nota para openSUSE:** Para ejecutar la interfaz gráfica GTK4, asegúrate de contar con la pila base de PyGObject (generalmente disponible de serie o en el repositorio de usuario). Si solo dispones de Python básico, la línea de comandos `intactpdf` funciona al 100% sin dependencias gráficas.
+> **Nota para openSUSE:** Si el sistema ya cuenta con los paquetes gráficos habituales (`python3-gobject`, `typelib-1_0-Gtk-4_0`, `typelib-1_0-Adw-1`), `intactpdf-gui` arrancará de forma inmediata. Si estás en un sistema mínimo de solo consola, el comando `intactpdf` funciona al 100% sin necesidad de interfaz gráfica.
 
-### 2. Paquete Flatpak (Sandbox aislado)
+---
+
+### 📦 Opción 2: Paquete Flatpak (Aislamiento Total)
+
+Si prefieres usar Flatpak:
 
 ```bash
+# Compilar e instalar a nivel de usuario (sin root)
 flatpak-builder --user --install --force-clean \
     build-dir packaging/io.github.lockerdocx.IntactPDF.json
 
-# Ejecutar la aplicación
+# Ejecutar
 flatpak run io.github.lockerdocx.IntactPDF
 ```
 
 ---
 
-## 💻 Uso por Línea de Comandos (CLI)
-
-IntactPDF ofrece un conjunto completo de comandos independientes de la GUI para servidores, guiones o automatizaciones:
+### 📦 Opción 3: Script Automatizado `instalar.sh`
 
 ```bash
-# Diagnóstico y estado del entorno
-intactpdf doctor
-
-# Inspeccionar metadatos y objetos de una página
-intactpdf info documento.pdf
-intactpdf list documento.pdf --pagina 0
-
-# Sustituir una imagen conservando el layout original
-intactpdf replace-image documento.pdf --xobject Im1 --imagen nuevo_logo.png -o salida.pdf
-
-# Extraer imagen incrustada a disco
-intactpdf extract-image documento.pdf --xobject Im1 -o logo_extraido.png
-
-# Rotar una página 90 grados
-intactpdf rotate documento.pdf --pagina 0 --angulo 90 -o rotado.pdf
-
-# Editar texto en el run de texto 2
-intactpdf edit documento.pdf --object 2 --text "Factura Rectificada" -o editado.pdf
-
-# Guardado seguro sobre el original con backup .pdf~
-intactpdf edit documento.pdf --object 2 --text "Nuevo Texto" --in-place
-
-# Purgar historial previo y objetos eliminados (compactación / redacción)
-intactpdf compact editado.pdf -o final_limpio.pdf
-
-# Descifrar PDF protegido
-intactpdf decrypt cifrado.pdf -p "secreto123" -o descifrado.pdf
+git clone https://github.com/LockerDocx/intactpdf.git
+cd intactpdf
+./instalar.sh
 ```
+
+El script detecta automáticamente tu distribución Linux, comprueba las dependencias disponibles y configura el entorno óptimo.
 
 ---
 
-## 🧪 Batería de Pruebas y Calidad
+## 💻 Referencia de la Línea de Comandos (CLI)
 
-El proyecto dispone de una infraestructura de pruebas de regresión y fidelidad visual:
+IntactPDF incluye herramientas de terminal para automatizar modificaciones por lotes en entornos de servidor:
+
+| Comando | Descripción | Ejemplo de Uso |
+| :--- | :--- | :--- |
+| `doctor` | Diagnostica dependencias y estado del entorno | `intactpdf doctor` |
+| `info` | Inspecciona metadatos, revisiones y firmas | `intactpdf info documento.pdf` |
+| `list` | Lista todos los objetos de una página con coordenadas | `intactpdf list doc.pdf --pagina 0` |
+| `fonts` | Inspecciona fuentes y tipografías incrustadas | `intactpdf fonts documento.pdf` |
+| `edit` | Modifica texto de un objeto específico | `intactpdf edit doc.pdf --object 2 --text "Nuevo Texto" -o salida.pdf` |
+| `replace-image` | Sustituye un XObject de imagen conservando el layout | `intactpdf replace-image doc.pdf --xobject Im1 --imagen logo.png -o salida.pdf` |
+| `extract-image` | Extrae una imagen incrustada a disco | `intactpdf extract-image doc.pdf --xobject Im1 -o logo.png` |
+| `rotate` | Rota una página (90, 180, 270 grados) | `intactpdf rotate doc.pdf --pagina 0 --angulo 90 -o rotado.pdf` |
+| `delete` | Elimina un objeto de la página | `intactpdf delete doc.pdf --object 5 -o limpio.pdf` |
+| `move` | Desplaza un objeto en coordenadas X/Y (pt) | `intactpdf move doc.pdf --object 3 --dx 10 --dy -5 -o movido.pdf` |
+| `scale` | Escala un objeto proporcionalmente | `intactpdf scale doc.pdf --object 3 --factor 1.2 -o escalado.pdf` |
+| `compact` | Purga el historial previo y revisiones antiguas | `intactpdf compact editado.pdf -o final_seguro.pdf` |
+| `decrypt` | Descifra un documento protegido con contraseña | `intactpdf decrypt cifrado.pdf -p "clave" -o abierto.pdf` |
+| `check` | Valida la integridad estructural del PDF | `intactpdf check salida.pdf` |
+
+> 💡 **Guardado In-Place:** En los comandos de modificación (`edit`, `delete`, `move`, `scale`, `replace-image`, `rotate`), puedes usar el modificador `--in-place` para aplicar los cambios directamente sobre el archivo original, generando un respaldo automático `.pdf~`.
+
+---
+
+## 🧪 Pruebas Automatizadas y Calidad
+
+El proyecto cuenta con una infraestructura de pruebas rigurosa que valida tanto la integridad estructural del código como la fidelidad visual:
 
 ```bash
-# Ejecución de la suite completa de pruebas unitarias e integradas
-python3 -m pytest tests/ -v
+# 1. Ejecutar las 118 pruebas unitarias
+pytest tests/ -v
 
-# Validación visual sobre el corpus dorado (19 casos críticos de edición)
+# 2. Ejecutar la validación visual sobre el corpus dorado de PDFs reales
 python3 tools/test_aceptacion.py
 ```
 
-### Métricas de Validación Empírica
-- **118 pruebas unitarias aprobadas**, 0 fallos.
-- **19/19 casos de aceptación visual**: 0 píxeles alterados fuera de la caja delimitadora en comparación con el documento original.
-- **Prefijo intacto (19/19)**: Verificación criptográfica de que cada archivo editado conserva íntegramente la cabecera y el cuerpo binario de su versión predecesora.
+### Resultados de la Suite
+* **118 pruebas unitarias aprobadas**, 0 fallos, 4 omitidas (artefactos opcionales de release).
+* **19 de 19 pruebas de aceptación visual (100% de éxito):** 0 píxeles alterados fuera de la región editada respecto al documento original.
+* **Preservación de prefijo (19/19):** Verificación matemática de que los bytes del documento original permanecen inalterados en la cabecera del archivo generado.
+
+---
+
+## 🗺️ Hoja de Ruta
+
+- [x] Motor de guardado incremental estricto (ISO 32000-1 §7.5.6)
+- [x] Soporte de edición tipográfica con ajuste métrico `Tc`
+- [x] Interfaz GTK4 + Libadwaita con cinta de opciones contextual
+- [x] Reemplazo y extracción de imágenes (`replace-image`, `extract-image`)
+- [x] Rotación incremental de páginas (`rotate`)
+- [x] Detección visual de firmas digitales
+- [x] Herramienta de compactación de revisiones (`compact`)
+- [x] Atajos ergonómicos (Ctrl+C, Ctrl+Scroll, Undo/Redo)
+- [x] Guardado atómico sobre el archivo original con backup automático
+- [ ] Soporte para alfabetos de derecha a izquierda (RTL: Árabe, Hebreo)
+- [ ] Edición de bloques de texto multilínea con justificación dinámica (reflow)
+- [ ] Publicación del paquete en el catálogo central de Flathub
 
 ---
 
 ## 📄 Licencia
 
-Este proyecto está bajo licencia doble **MIT OR Apache-2.0**.
-El núcleo es 100% propio (sin dependencias con copyleft como AGPL / MuPDF).
+Este proyecto está disponible bajo doble licencia:
+* [MIT License](LICENSE-MIT)
+* [Apache License, Version 2.0](LICENSE-APACHE)
+
+Puedes elegir cualquiera de las dos licencias a tu conveniencia.
