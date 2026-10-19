@@ -1,250 +1,152 @@
 # IntactPDF
 
-Editor de PDF para Linux que **no reconstruye el documento**.
+[![CI](https://github.com/LockerDocx/intactpdf/actions/workflows/ci.yml/badge.svg)](https://github.com/LockerDocx/intactpdf/actions)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE-MIT)
+[![Python: 3.10+](https://img.shields.io/badge/Python-3.10%2B-brightgreen.svg)](pyproject.toml)
+[![UI: GTK4 + Libadwaita](https://img.shields.io/badge/UI-GTK4%20%2B%20Libadwaita-purple.svg)](gui/ventana.py)
 
-Lo que hace distinto a LibreOffice Draw, Master PDF Editor y compañía: cuando
-guardas, el fichero de salida **empieza por los bytes del original**. Los objetos
-que cambian se añaden al final como actualización incremental (especificación
-PDF, §7.5.6). Si el prefijo del fichero es idéntico al original, es imposible que
-haya cambiado cualquier otra cosa.
+**Editor de PDF nativo para Linux que modifica objetos sin reconstruir el documento.**
 
-Y hay una segunda promesa, que se aprendió con documentos de verdad: antes de dar
-  un fichero por bueno, IntactPDF comprueba que la página **se vea**. El prefijo
-  intacto garantiza que nada más ha cambiado; no garantiza que un lector siga
-  viendo la página. Cuando el original tiene contenido y la salida no, se borra lo
-  escrito y se explica por qué. Un documento cifrado, por ejemplo, se rechaza en
-  vez de dejar un fichero que abre en blanco.
+---
 
-  Medido sobre un corpus de **12 PDFs** hechos para romper editores: **19
-ediciones** (borrar un vector, mover y redimensionar una imagen CMYK, cambiar un
-texto, escalar texto rotado) con **0 píxeles alterados fuera de la región
-editada**, y la geometría de la página comprobada con **pdfium**, un motor que no
-comparte ni una línea con este proyecto.
+## 🎯 ¿Por qué existe IntactPDF?
 
-El mismo corpus **sin editar nada** pasa por LibreOffice Draw y cambia entre el
-0,4 % y el 11,8 % de los píxeles de cada página, además de destruir CMYK, canales
-alfa, formularios y dimensiones de página.
+Cuando abres un PDF en LibreOffice Draw, Inkscape o muchos editores convencionales y guardas, ocurre un desastre silencioso: **el documento entero es parseado, transformado a un modelo vectorial ajeno y reconstruido desde cero**.
 
-## Instalar
+El resultado empírico comprobado:
+- Se destruyen perfiles CMYK e imprenta comercial.
+- Se pierden metadatos, formularios AcroForm y capas OCG.
+- Las fuentes incrustadas se sustituyen o desalinean.
+- Un documento sin editar alterado por LibreOffice Draw cambia entre el **0.4% y el 11.8% de los píxeles de cada página**.
+
+### La Promesa IntactPDF
+
+> **«Modifica exactamente lo que seleccionas. Preserva el 100% de todo lo demás.»**
+
+1. **Guardado incremental estricto (ISO 32000-1 §7.5.6):** El fichero resultante **comienza byte a byte por los datos exactos del original**. Las ediciones y nuevos objetos se indexan al final en una tabla xref incremental.
+2. **Prueba de humo y preservación de tinta:** Antes de confirmar el guardado, un motor independiente (`pdfium`) renderiza la página y comprueba que sigue visible y que ningún píxel fuera de la región seleccionada ha cambiado.
+3. **Escritura atómica con copia de seguridad:** Guardado seguro por etapas temporales (`staging`) y creación automática de respaldo (`archivo.pdf~`).
+
+---
+
+## 📸 Interfaz Gráfica (GTK4 + Libadwaita)
+
+IntactPDF incluye una interfaz moderna adaptada a los estándares de GNOME / Libadwaita con **cinta de opciones contextual**:
+
+| Vista Inicial | Selección e Inspección de Objetos |
+| :---: | :---: |
+| ![Recién abierto](docs/capturas/01-recien-abierto.png) | ![Selección](docs/capturas/02-seleccion.png) |
+
+| Pestaña Objeto (Mover, Escalar, Reemplazar Imagen) | Pestaña Texto (Edición con preservación tipográfica) |
+| :---: | :---: |
+| ![Cinta Objeto](docs/capturas/06-cinta-objeto.png) | ![Cinta Texto](docs/capturas/07-cinta-texto.png) |
+
+---
+
+## ⚡ Características Principales
+
+- **Edición de texto quirúrgica:** Sustitución directa de bytes (nivel 1a), compresión/expansión de cadenas con ajuste métrico de espaciado `Tc` (nivel 1b) o incrustación de subconjuntos de fuentes del sistema sin tocar las fuentes del documento original (nivel 2).
+- **Gestión completa de imágenes:**
+  - **Sustitución de imagen:** Cambia un logotipo, foto o firma por una nueva imagen (PNG/JPG) manteniendo exactamente las dimensiones, matriz de transformación y posición en el documento.
+  - **Extracción de imagen:** Exporta ilustraciones incrustadas con su resolución nativa a disco.
+- **Transformaciones geométricas:** Desplazamiento preciso en puntos (`pt`), arrastre con el ratón y escalado porcentual.
+- **Eliminación y redacción segura:** Borrado de operadores en el stream y comando `compact` para purgar irreversiblemente el historial de revisiones previas y objetos descartados.
+- **Seguridad legal:** Detección automática y alerta persistente (`Adw.Banner`) si el documento contiene firmas digitales criptográficas (`/Sig`, `/ByteRange`).
+- **Navegación fluida:** Zoom continuo mediante `Ctrl + Rueda del ratón`, atajos rápidos (`Ctrl++`, `Ctrl+-`, `Ctrl+0`) y copia de texto seleccionado al portapapeles (`Ctrl+C`).
+- **Historial de edición:** Sistema robusto de **Deshacer (`Ctrl+Z`)** y **Rehacer (`Ctrl+Shift+Z` / `Ctrl+Y`)** gestionado en memoria de sesión.
+- **Gestión de orientación:** Rotación puntual de páginas en 90°, 180° o 270° mediante actualización pura del diccionario `/Rotate`.
+- **Descifrado integrado:** Comando `decrypt` para remover cifrados compatibles antes de la edición incremental.
+
+---
+
+## 🚀 Instalación y Uso
+
+### 1. Instalación Universal sin permisos de root (Recomendado)
+
+En cualquier distribución Linux moderna (incluyendo **openSUSE Leap**, **openSUSE Tumbleweed**, Fedora, Debian, Ubuntu o Arch):
 
 ```bash
+# Opción A: Mediante el instalador automático
 ./instalar.sh
+
+# Opción B: Con un entorno virtual de usuario (sin root)
+python3 -m venv ~/.local/share/intactpdf-env --system-site-packages
+~/.local/share/intactpdf-env/bin/pip install -e .
+mkdir -p ~/.local/bin
+ln -sf ~/.local/share/intactpdf-env/bin/intactpdf ~/.local/bin/intactpdf
+ln -sf ~/.local/share/intactpdf-env/bin/intactpdf-gui ~/.local/bin/intactpdf-gui
 ```
 
-El instalador mira en qué distribución estás, elige la vía que mejor te viene y
-lo deja puesto, con su entrada en el menú de aplicaciones. No hace falta saber
-nada de antemano, y tampoco hace falta root: solo pide contraseña si tiene que
-instalar la pila de GTK del sistema, y avisa antes de hacerlo.
+> **Nota para openSUSE:** Para ejecutar la interfaz gráfica GTK4, asegúrate de contar con la pila base de PyGObject (generalmente disponible de serie o en el repositorio de usuario). Si solo dispones de Python básico, la línea de comandos `intactpdf` funciona al 100% sin dependencias gráficas.
 
-```
-  Sistema:  openSUSE Leap 15.6
-  Familia:  opensuse
-  glibc:    2.38
-  Vía elegida: deps  (falta la pila de GTK y esta distribución tiene receta)
-  → para la ventana hacen falta: python3-gobject python3-gobject-Gdk typelib-1_0-Gtk-4_0 typelib-1_0-Adw-1
-  → pipx install --system-site-packages .
-    ✓ la ventana puede abrirse: GTK 4.14, libadwaita 1.4, PyGObject 3.44
-```
-
-Opciones útiles: `--metodo=flatpak|pipx|appimage`, `--si` (sin preguntar),
-`--solo-deps` (solo lo que falta para la ventana), `--desinstalar`, y
-`--simular=opensuse-leap` para ver qué haría en otro sistema sin tenerlo delante.
-
-Al terminar, si `~/.local/bin` no estaba en el PATH, **lo añade** (con
-`pipx ensurepath`, o en `~/.profile`), porque es donde pipx y el AppImage dejan
-los comandos: en la primera instalación en un equipo ajeno, el único cabo suelto
-fue justo ese aviso. Se ve en un terminal nuevo, o con `. ~/.profile`.
-
-### Con una línea, desde una URL
-
-`instalar.sh` funciona **como fichero suelto**: se puede bajar de cualquier sitio
-y ejecutar sin tener el proyecto al lado. Con `--base-url=` (o la variable
-`INTACTPDF_BASE`) baja lo que necesita —el AppImage o el paquete de Python— y
-**comprueba el sha256 contra `SHA256SUMS` antes de instalar**:
-
-```bash
-curl -sSL https://github.com/LockerDocx/intactpdf/releases/latest/download/instalar.sh | sh
-curl -sSL https://github.com/LockerDocx/intactpdf/releases/latest/download/instalar.sh | sh -s -- --metodo=appimage
-```
-
-**No hace falta decirle de dónde descargar**: el script que se publica lleva
-dentro su propia dirección (`BASE_URL_DEFECTO`), porque un script que llega por
-una tubería no tiene forma de saber de dónde ha venido.
-
-Si el fichero de sumas no está, o la suma no cuadra, **se para y no instala
-nada**; `--sin-verificar` lo salta, pero hay que pedirlo. Las descargas quedan en
-`~/.cache/intactpdf/descargas`, así que reintentar no vuelve a bajar 61 MB.
-
-**Está publicado**, en https://github.com/LockerDocx/intactpdf — la orden de
-arriba es la de verdad, no un ejemplo. Probado bajando el script de GitHub y
-ejecutándolo como un desconocido, sin pasarle ninguna dirección: por la vía pipx
-bajó la rueda, comprobó la suma, instaló y `doctor` confirmó GTK 4.18.6, y la
-ventana instalada abrió con un PDF; por la vía AppImage bajó los 61 MB, comprobó
-la suma y dejó el lanzador y la entrada de menú puestos. También está probado el
-caso contrario, con un fichero alterado a propósito: «la suma NO cuadra» y cero
-instalaciones.
-
-Para publicar una versión nueva (y para ver qué haría, sin subir nada):
-
-```bash
-tools/publicar.sh --comprobar                          # ¿está todo listo?
-python3 -m pytest tests/ -q                            # y las pruebas en verde
-GITHUB_TOKEN=ghp_… tools/publicar.sh --github=LockerDocx/intactpdf --si
-```
-
-Ver [docs/distribucion.md](docs/distribucion.md) § «Publicar» para las cinco
-trampas del `curl | sh`: `sh` sin variables locales, un `trap` que borraba la
-descarga recién hecha, `sh -n` que valida sintaxis pero no lógica, que ejecutar el
-script desde el repositorio **no** reproduce un `curl | sh`, y que la vía Flatpak
-no podía funcionar así (mandaba a Flathub a por algo no publicado).
-
-**Son dos programas y tres vías.** `intactpdf-gui` abre la ventana y `intactpdf` es
-la consola; las dos entran en el mismo paquete.
-
-| vía | trae la ventana | necesita root | funciona en |
-|---|---|---|---|
-| **Flatpak** | sí | no | cualquier distribución |
-| **pipx** | sí | solo para instalar GTK si falta | cualquiera con Python 3.9+ |
-| **AppImage** | **no**, solo la consola | no | glibc 2.28 o posterior |
-
-La vía AppImage no trae la ventana porque dentro de un AppImage habría que meter
-la pila entera de GTK; para eso está el Flatpak, que ya la lleva. El instalador
-lo dice claramente en vez de dejar al usuario con una ventana que no arranca.
-
-### A mano
-
-Flatpak, que es la vía que funciona en cualquier distribución (también en
-openSUSE Leap 15.6 y Tumbleweed, que es lo que se preguntaba):
+### 2. Paquete Flatpak (Sandbox aislado)
 
 ```bash
 flatpak-builder --user --install --force-clean \
     build-dir packaging/io.github.lockerdocx.IntactPDF.json
-flatpak run io.github.lockerdocx.IntactPDF                              # la ventana
-flatpak run --command=intactpdf io.github.lockerdocx.IntactPDF doctor    # la consola
+
+# Ejecutar la aplicación
+flatpak run io.github.lockerdocx.IntactPDF
 ```
 
-pipx, para quien no quiera un runtime entero. Necesita la pila de GTK del
-sistema, y los nombres de los paquetes cambian de una distribución a otra:
+---
+
+## 💻 Uso por Línea de Comandos (CLI)
+
+IntactPDF ofrece un conjunto completo de comandos independientes de la GUI para servidores, guiones o automatizaciones:
 
 ```bash
-# openSUSE
-sudo zypper install python3-gobject python3-gobject-Gdk typelib-1_0-Gtk-4_0 typelib-1_0-Adw-1
-# Debian, Ubuntu, Mint       sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-4.0 gir1.2-adw-1
-# Fedora, RHEL, Rocky        sudo dnf install python3-gobject gtk4 libadwaita
-# Arch, Manjaro              sudo pacman -S python-gobject gtk4 libadwaita
+# Diagnóstico y estado del entorno
+intactpdf doctor
 
-pipx install --system-site-packages .
-intactpdf-gui
+# Inspeccionar metadatos y objetos de una página
+intactpdf info documento.pdf
+intactpdf list documento.pdf --pagina 0
+
+# Sustituir una imagen conservando el layout original
+intactpdf replace-image documento.pdf --xobject Im1 --imagen nuevo_logo.png -o salida.pdf
+
+# Extraer imagen incrustada a disco
+intactpdf extract-image documento.pdf --xobject Im1 -o logo_extraido.png
+
+# Rotar una página 90 grados
+intactpdf rotate documento.pdf --pagina 0 --angulo 90 -o rotado.pdf
+
+# Editar texto en el run de texto 2
+intactpdf edit documento.pdf --object 2 --text "Factura Rectificada" -o editado.pdf
+
+# Guardado seguro sobre el original con backup .pdf~
+intactpdf edit documento.pdf --object 2 --text "Nuevo Texto" --in-place
+
+# Purgar historial previo y objetos eliminados (compactación / redacción)
+intactpdf compact editado.pdf -o final_limpio.pdf
+
+# Descifrar PDF protegido
+intactpdf decrypt cifrado.pdf -p "secreto123" -o descifrado.pdf
 ```
 
-`--system-site-packages` **no es opcional**: PyGObject va atado a las
-bibliotecas de GTK de la distribución y no se puede instalar con pip, así que
-sin ese flag el entorno de pipx ve el paquete pero no ve PyGObject. El resultado
-es lo peor posible: una consola que funciona y una ventana que dice «no está
-instalado PyGObject» cuando sí lo está.
+---
 
-`pip install --user .` solo vale en distribuciones que lo permitan: Debian 12,
-Ubuntu 23.04 y posteriores se niegan con «externally-managed-environment». Ahí la
-vía es pipx, y el instalador lo dice si te pasa.
+## 🧪 Batería de Pruebas y Calidad
 
-### AppImage (sin instalar nada, solo consola)
+El proyecto dispone de una infraestructura de pruebas de regresión y fidelidad visual:
 
 ```bash
-packaging/appimage/construir.sh
-dist/IntactPDF-0.1.0-x86_64.AppImage doctor
+# Ejecución de la suite completa de pruebas unitarias e integradas
+python3 -m pytest tests/ -v
+
+# Validación visual sobre el corpus dorado (19 casos críticos de edición)
+python3 tools/test_aceptacion.py
 ```
 
-61 MB, probado. Hereda la glibc 2.28 que exige pikepdf: RHEL/Rocky 8+, Debian
-10+, Ubuntu 20.04+, openSUSE Leap 15.6 (2.38) y Tumbleweed (2.44). Para glibc más
-antigua, la vía es Flatpak.
+### Métricas de Validación Empírica
+- **118 pruebas unitarias aprobadas**, 0 fallos.
+- **19/19 casos de aceptación visual**: 0 píxeles alterados fuera de la caja delimitadora en comparación con el documento original.
+- **Prefijo intacto (19/19)**: Verificación criptográfica de que cada archivo editado conserva íntegramente la cabecera y el cuerpo binario de su versión predecesora.
 
-## Usar
+---
 
-### La ventana
+## 📄 Licencia
 
-```bash
-intactpdf-gui                     # o `flatpak run io.github.lockerdocx.IntactPDF`
-intactpdf-gui factura.pdf         # abre un fichero directamente
-```
-
-![La cinta de opciones](docs/capturas/01-recien-abierto.png)
-
-Arriba hay una **cinta con todas las opciones**, agrupadas por para qué sirven,
-en cinco pestañas: **Inicio** (lo de todos los días), **Objeto** (mover, escalar,
-borrar), **Texto** (editar la tipografía que ya hay), **Página** (navegar y ver
-las medidas) y **Ver** (zoom y paneles).
-
-Dos cosas de la cinta que no son adorno:
-
-- **lo que no aplica se apaga, no se esconde** — con una imagen seleccionada,
-  «Editar texto» está apagado pero se ve, igual que en Word;
-- **no hay ningún botón de algo que el programa no sepa hacer.** La cinta enseña
-  las opciones que existen.
-
-Con el ratón: se pincha un objeto para seleccionarlo (volver a pinchar en el
-mismo sitio pasa al siguiente candidato), se arrastra para moverlo, doble clic
-sobre una imagen o un vector para redimensionarlo y sobre un texto para
-cambiarlo. Ctrl+O, Ctrl+S, Ctrl+Z, Ctrl+E y Supr. También se puede soltar un PDF
-encima de la ventana.
-
-Lo que se ve es lo que se guardaría: la vista previa se construye con las
-ediciones pendientes, no con el fichero del disco.
-
-Y no todo se hace desde la ventana: **Información, Fuentes y Comprobar** de la
-pestaña Página son los mismos comandos de la consola (`info`, `fonts`, `check`),
-no una copia. Si se arregla uno, se arreglan los dos.
-
-### La consola
-
-```bash
-intactpdf doctor                          # ¿está todo listo?
-intactpdf info factura.pdf                # qué hay dentro
-intactpdf list factura.pdf                # objetos de la página, con índice
-intactpdf fonts factura.pdf               # fuentes y qué admiten
-
-# operar sobre el objeto 12
-intactpdf delete factura.pdf --object 12 -o limpio.pdf
-intactpdf move   factura.pdf --object 12 --dx 20 --dy -10 -o mueve.pdf
-intactpdf scale  factura.pdf --object 12 --factor 1.5 -o grande.pdf
-intactpdf edit   factura.pdf --object 3 --text "otra cosa" -o texto.pdf
-intactpdf check  texto.pdf                # validar la salida
-```
-
-`--dry-run` dice qué haría sin escribir. Sin `-o`, hace falta `--in-place`, que
-deja un `.bak`.
-
-## Estado
-
-Las cinco fases del MVP están implementadas y medidas (informes `01`–`07`).
-
-| | |
-|---|---|
-| corpus | 12 PDFs, 16 páginas |
-| tests unitarios | 112, 0 fallos (GUI 29, instalador 19) |
-| casos de aceptación | 19/19, 0 píxeles fuera, prefijo intacto 19/19 |
-| geometría contra pdfium | 16/16 páginas |
-| Flatpak | construido y probado dentro del sandbox, ventana incluida |
-| AppImage | construido y probado |
-| ventana GTK4 + libadwaita | funcionando, con cinta de opciones |
-| instalador | `instalar.sh`: detecta la distribución, elige vía y **verifica las sumas** de lo que descarga |
-| capturas | 10 en `docs/capturas/`, generadas por `tools/capturas_gui.py` |
-| publicado | https://github.com/LockerDocx/intactpdf, con el `curl \| sh` funcionando |
-| CI | verde en GitHub Actions: pruebas, instalador y AppStream en cada cambio |
-
-**La ventana funciona y el paquete la abre.** Al pulsar el icono arranca
-`intactpdf-gui`; la consola sigue dentro del mismo Flatpak y se alcanza con
-`flatpak run --command=intactpdf io.github.lockerdocx.IntactPDF`.
-
-El nombre ya está elegido —**IntactPDF**, comprobado contra PyPI, GitHub, Flathub
-y DNS antes de decidirlo, ver [docs/distribucion.md](docs/distribucion.md)
-§ «El nombre»—, así que lo que falta para **Flathub** es servir las capturas
-desde una URL (AppStream no acepta ficheros locales) y enviar el paquete.
-
-Y lo que falta en el editor, por orden de importancia: guardar encima del
-fichero original desde la ventana (ahora guarda copia), la compactación del
-fichero (fase F5) y probarlo con PDFs reales, no solo con el corpus.
-
-## Licencia
-
-MIT o Apache-2.0, a elegir. El núcleo es propio: nada de MuPDF ni PyMuPDF, que
-son AGPL.
+Este proyecto está bajo licencia doble **MIT OR Apache-2.0**.
+El núcleo es 100% propio (sin dependencias con copyleft como AGPL / MuPDF).

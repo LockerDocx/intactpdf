@@ -228,6 +228,94 @@ def test_lo_que_guarda_la_gui_empieza_por_el_original():
     assert salida.read_bytes()[:len(original)] == original
 
 
+def test_guardar_sobre_original_en_gui_crea_backup_y_reinicia_cambios():
+    """Guardar sin destino en la sesión guarda sobre el original con backup."""
+    import shutil
+    origen = CORPUS / "02_fuente_subset.pdf"
+    inplace = TMP / "gui_inplace.pdf"
+    backup = TMP / "gui_inplace.pdf~"
+    backup.unlink(missing_ok=True)
+    shutil.copy2(origen, inplace)
+    bytes_orig = origen.read_bytes()
+
+    s = Sesion()
+    s.abrir(inplace)
+    s.seleccionar_en(150, 785)
+    assert s.editar_texto("Texto modificado in-place")
+    assert s.hay_cambios is True
+
+    msg = s.guardar()
+    assert s.hay_cambios is False
+    assert backup.exists()
+    assert backup.read_bytes() == bytes_orig
+    assert inplace.read_bytes()[:len(bytes_orig)] == bytes_orig
+    assert "copia previa" in msg
+
+
+def test_sesion_rotar_extraer_y_reemplazar_imagen():
+    """Operaciones de imagen y rotación sobre la Sesion de la GUI."""
+    import shutil
+    from PIL import Image
+
+    origen = CORPUS / "04_imagen_smask.pdf"
+    trabajo = TMP / "gui_imagen_trabajo.pdf"
+    shutil.copy2(origen, trabajo)
+
+    s = Sesion()
+    s.abrir(trabajo)
+    assert s.tiene_firma is False
+
+    # 1. Rotar página
+    assert s.rotar(90) is True
+    assert "rotada 90°" in s.ultimo_mensaje
+
+    # 2. Seleccionar imagen
+    im_objs = [o for o in s.objetos() if o.tipo == "imagen"]
+    assert len(im_objs) > 0
+    s.seleccionar(im_objs[0])
+
+    # 3. Extraer imagen
+    salida_png = TMP / "gui_extraida.png"
+    salida_png.unlink(missing_ok=True)
+    res = s.extraer_imagen_seleccionada(salida_png)
+    assert res is not None and salida_png.exists()
+    with Image.open(salida_png) as pim:
+        assert pim.size == (300, 200)
+
+    # 4. Reemplazar imagen
+    nueva_png = TMP / "gui_nueva.png"
+    Image.new("RGB", (64, 64), color="red").save(nueva_png)
+    assert s.reemplazar_imagen_seleccionada(nueva_png) is True
+    assert "reemplazada" in s.ultimo_mensaje
+
+
+def test_sesion_deshacer_y_rehacer():
+    """Historial completo de operaciones: deshacer (Ctrl+Z) y rehacer (Ctrl+Shift+Z/Ctrl+Y)."""
+    s = Sesion()
+    s.abrir(CORPUS / "00_baseline.pdf")
+    assert s.puede_deshacer is False
+    assert s.puede_rehacer is False
+
+    # Editar un texto
+    s.seleccionar_en(150, 785)
+    assert s.editar_texto("Texto modificado para test")
+    assert s.puede_deshacer is True
+    assert s.puede_rehacer is False
+
+    # Deshacer
+    assert s.deshacer() is True
+    assert s.puede_deshacer is False
+    assert s.puede_rehacer is True
+    assert "Deshecho" in s.ultimo_mensaje
+
+    # Rehacer
+    assert s.rehacer() is True
+    assert s.puede_deshacer is True
+    assert s.puede_rehacer is False
+    assert "Rehecho" in s.ultimo_mensaje
+
+
+
 def test_tras_editar_el_texto_la_lista_ensena_el_texto_nuevo():
     """Lo que se ve tiene que ser lo que hay, no los códigos de la fuente.
 

@@ -103,7 +103,11 @@ def test_la_estructura_no_se_toca():
 
 def test_qpdf_valida_las_salidas():
     """Un fichero que el proyecto genere debe pasar un validador externo."""
+    import shutil
     import subprocess
+    import pytest
+    if not shutil.which("qpdf"):
+        pytest.skip("qpdf no está instalado en el sistema")
     for _, r in _correr_todos():
         editado = RAIZ / ".tmp" / f"acept_{r.caso}.pdf"
         if not editado.exists():

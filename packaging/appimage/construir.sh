@@ -95,9 +95,28 @@ export PYTHONNOUSERSITE=1
 export PATH="$AQUI/usr/python/bin:$PATH"
 export XDG_DATA_DIRS="$AQUI/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
 
-# Se invoca el módulo directamente en lugar del script de consola: así no
-# depende de ningún shebang y funciona igual montado, extraído o movido de
-# sitio. El script de consola sigue en bin/ por si alguien extrae el AppImage.
+# Si se pide --gui o si se ejecuta sin argumentos desde el entorno de escritorio:
+QUIERE_GUI=0
+if [ $# -eq 0 ]; then
+    QUIERE_GUI=1
+elif [ "${1:-}" = "--gui" ]; then
+    QUIERE_GUI=1
+    shift
+fi
+
+if [ "$QUIERE_GUI" = "1" ]; then
+    # Si el sistema anfitrión tiene la pila de GTK4 y PyGObject, abre la interfaz gráfica
+    if command -v python3 >/dev/null 2>&1 && python3 -c "import gi; gi.require_version('Gtk', '4.0'); gi.require_version('Adw', '1')" >/dev/null 2>&1; then
+        # Pasar las librerías del AppImage al python del sistema
+        SITELIB="$(find "$AQUI/usr/python/lib" -maxdepth 2 -name "site-packages" 2>/dev/null | head -1)"
+        export PYTHONPATH="${SITELIB}:$AQUI/usr/python/lib:$AQUI:${PYTHONPATH:-}"
+        unset PYTHONHOME
+        unset PYTHONNOUSERSITE
+        exec python3 -m gui.lanzar "$@"
+    fi
+fi
+
+# Por omisión o para órdenes CLI, se ejecuta el Python portátil interno
 exec "$AQUI/usr/python/bin/python3" -m nucleo.cli "$@"
 APPRUN
 chmod +x "$APPDIR/AppRun"

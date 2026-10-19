@@ -132,6 +132,16 @@ def _candidatos_ordenados(nombre: str) -> list[str]:
     if n.endswith("bold"):
         base = nombre[:-4]
         out.append(base + "-Bold")
+
+    # Si no se encuentra el nombre exacto, buscar en los alias admisibles
+    # (p. ej. Helvetica -> LiberationSans, Arial, DejaVuSans)
+    es_bold = "bold" in n
+    for clave, alias_lista in ALIAS_ADMISIBLES.items():
+        if clave in n or any(_normalizar(a) in n for a in alias_lista):
+            for a in alias_lista:
+                candidato = f"{a}-Bold" if (es_bold and not a.lower().endswith("bold")) else a
+                if candidato not in out:
+                    out.append(candidato)
     return out
 
 

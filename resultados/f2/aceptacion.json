@@ -200,11 +200,11 @@
       "px_totales": 2005644,
       "empieza_por_el_original": true,
       "bytes_original": 80551,
-      "bytes_anadidos": 8167,
+      "bytes_anadidos": 8244,
       "detalle": [
         "editar texto[0] 'Solo aparecen estas letras: ' -> 'Solo aparecen estas letras: '",
-        "   nivel 2; ancho 16652 -> 20786 (+4134 milésimas); +74.41 pt; DESBORDA; fuente nueva DejaVuSans (DejaVuSans.ttf, 16164 B)",
-        "guardado incremental: 8167 bytes añadidos de 80551",
+        "   nivel 2; ancho 16652 -> 20786 (+4134 milésimas); +74.41 pt; DESBORDA; fuente nueva DejaVuSans (DejaVuSans.ttf, 16344 B)",
+        "guardado incremental: 8244 bytes añadidos de 80551",
         "objetos redefinidos: [(15, 0), (16, 0), (17, 0), (1, 0)]"
       ]
     },
@@ -218,11 +218,11 @@
       "px_totales": 2005644,
       "empieza_por_el_original": true,
       "bytes_original": 80551,
-      "bytes_anadidos": 8607,
+      "bytes_anadidos": 8672,
       "detalle": [
         "editar texto[0] 'Solo aparecen estas letras: ' -> 'Solo aparecen estas letras: '",
-        "   nivel 2; ancho 16652 -> 22587 (+5935 milésimas); +106.83 pt; DESBORDA; fuente nueva DejaVuSans (DejaVuSans.ttf, 16636 B); Tc -2.180",
-        "guardado incremental: 8607 bytes añadidos de 80551",
+        "   nivel 2; ancho 16652 -> 22587 (+5935 milésimas); +106.83 pt; DESBORDA; fuente nueva DejaVuSans (DejaVuSans.ttf, 16828 B); Tc -2.180",
+        "guardado incremental: 8672 bytes añadidos de 80551",
         "objetos redefinidos: [(15, 0), (16, 0), (17, 0), (1, 0)]"
       ]
     },
@@ -236,11 +236,11 @@
       "px_totales": 2005644,
       "empieza_por_el_original": true,
       "bytes_original": 28417,
-      "bytes_anadidos": 10428,
+      "bytes_anadidos": 10495,
       "detalle": [
         "editar texto[3] 'El rápido zorro ñandú saltó ' -> 'El rápido zorro cambió esta '",
-        "   nivel 2; ancho 51038 -> 20392 (-30646 milésimas); -398.40 pt; fuente nueva DejaVuSans (DejaVuSans.ttf, 16608 B)",
-        "guardado incremental: 10428 bytes añadidos de 28417",
+        "   nivel 2; ancho 51038 -> 20392 (-30646 milésimas); -398.40 pt; fuente nueva DejaVuSans (DejaVuSans.ttf, 16764 B)",
+        "guardado incremental: 10495 bytes añadidos de 28417",
         "objetos redefinidos: [(11, 0), (12, 0), (13, 0), (1, 0)]"
       ]
     },

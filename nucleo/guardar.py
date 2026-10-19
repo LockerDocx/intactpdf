@@ -20,6 +20,8 @@ haya modificado cualquier otra cosa.
 from __future__ import annotations
 
 import re
+import shutil
+import uuid
 import zlib
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -52,6 +54,14 @@ class InformeGuardado:
     @property
     def empieza_por_el_original(self) -> bool:
         return self.prefijo_intacto
+
+
+@dataclass
+class InformeCompactado:
+    bytes_original: int
+    bytes_salida: int
+    bytes_ahorrados: int
+    paginas: int
 
 
 def offset_ultimo_xref(datos: bytes) -> int:
@@ -328,6 +338,7 @@ def guardar_pagina_editada(
     contenidos: list[bytes],
     objetos_extra: dict[tuple[int, int], bytes] | None = None,
     verificar: bool = True,
+    crear_backup: bool = True,
 ) -> InformeGuardado:
     """Guarda una página con sus streams de contenido reemplazados.
 
@@ -342,12 +353,22 @@ def guardar_pagina_editada(
     exactamente lo editado, y el array `/Contents` del objeto de página —y el
     objeto de página entero— siguen sin tocarse.
 
-    Antes esto era un error que decía «la página tiene 8 streams de contenido y
-    se han pasado 1 contenidos», y dejaba fuera casi todos los PDFs reales. Los
-    que lo destaparon, probando con documentos de servidores públicos: el
-    formulario 1040 del IRS (8 streams por página, 229 campos de formulario), un
-    artículo de arXiv (2) y un libro de 2.882 páginas de govinfo (8).
+    Soporta guardar sobre el archivo original de forma completamente segura:
+    escribe primero en un archivo temporal en la misma carpeta, verifica que
+    un visor real dibuja la página con contenido y, solo si la verificación
+    pasa, crea una copia de seguridad `archivo.pdf~` y reemplaza el original
+    de forma atómica. Si la verificación falla, el archivo temporal se borra
+    y el original permanece intacto.
     """
+    ruta_original = Path(ruta_original)
+    ruta_salida = Path(ruta_salida)
+    es_mismo_archivo = False
+    try:
+        if ruta_salida.exists() and ruta_original.resolve() == ruta_salida.resolve():
+            es_mismo_archivo = True
+    except Exception:
+        pass
+
     with pikepdf.open(str(ruta_original)) as pdf:
         refs = num_objeto_stream_de_pagina(pdf.pages[num_pagina])
     if len(contenidos) == 1 and len(refs) > 1:
@@ -362,26 +383,304 @@ def guardar_pagina_editada(
             "al editar. Escribir el contenido sin cifrar dentro de un fichero que "
             "dice estar cifrado deja un documento que abre en blanco, así que no "
             "se escribe nada. Trabaja sobre una copia sin cifrado (por ejemplo, "
-            "abriéndolo e imprimiéndolo a PDF desde el visor) o espera a que el "
-            "cifrado sea un pendiente resuelto.")
+            "usando 'intactpdf decrypt' o abriéndolo e imprimiéndolo a PDF) o espera "
+            "a que el cifrado en guardado incremental sea un pendiente resuelto.")
 
     objetos = {ref: cuerpo_stream(datos) for ref, datos in zip(refs, contenidos)}
     if objetos_extra:
         objetos.update(objetos_extra)
-    informe = escribir_incremental(ruta_original, ruta_salida, objetos)
-    if verificar:
-        # El prefijo intacto garantiza que nada más ha cambiado, pero NO
-        # garantiza que un lector real vea la página: hay estructuras de PDF en
-        # las que el guardado incremental da un fichero válido que pdfium pinta
-        # en blanco. Se comprueba antes de dar el guardado por bueno, y si no se
-        # ve, no se deja el fichero a medias: se borra y se dice por qué.
-        problema = verificar_que_se_ve(ruta_original, ruta_salida, num_pagina)
-        if problema:
-            Path(ruta_salida).unlink(missing_ok=True)
-            raise ErrorGuardado(
-                f"{problema}. El fichero guardado se ha borrado: es preferible "
-                f"no escribir nada a escribir algo que no se ve. Pasa con "
-                f"documentos linearizados o con tabla de referencias híbrida, "
-                f"que es una limitación conocida de este editor (está en la "
-                f"lista de pendientes). El original no se ha tocado.")
-    return informe
+
+    # Escritura segura mediante archivo temporal de fase (staging)
+    tmp_salida = ruta_salida.with_name(f".{ruta_salida.name}.{uuid.uuid4().hex[:8]}.tmp")
+
+    try:
+        informe = escribir_incremental(ruta_original, tmp_salida, objetos)
+        if verificar:
+            problema = verificar_que_se_ve(ruta_original, tmp_salida, num_pagina)
+            if problema:
+                tmp_salida.unlink(missing_ok=True)
+                raise ErrorGuardado(
+                    f"{problema}. El fichero guardado se ha descartado: es preferible "
+                    f"no escribir nada a escribir algo que no se ve. Pasa con "
+                    f"documentos con estructuras complejas o linearizados. "
+                    f"El original no se ha tocado.")
+
+        if es_mismo_archivo and crear_backup:
+            backup = ruta_salida.with_name(f"{ruta_salida.name}~")
+            try:
+                shutil.copy2(ruta_salida, backup)
+            except Exception:
+                pass
+
+        tmp_salida.replace(ruta_salida)
+        return informe
+    except Exception:
+        tmp_salida.unlink(missing_ok=True)
+        raise
+
+
+def compactar_pdf(
+    ruta_entrada: str | Path,
+    ruta_salida: str | Path,
+    comprimir_streams: bool = True,
+) -> InformeCompactado:
+    """Eliminación segura y purga de historial (compactación / redacción).
+
+    A diferencia del guardado incremental (que conserva los bytes de versiones
+    anteriores y objetos eliminados en el historial del fichero), la compactación
+    reescribe el documento eliminando revisiones anteriores, objetos huérfanos y
+    datos descartados, logrando una purga irreversible del contenido eliminado
+    y reduciendo el tamaño del archivo al mínimo.
+    """
+    ruta_entrada = Path(ruta_entrada)
+    ruta_salida = Path(ruta_salida)
+    bytes_orig = ruta_entrada.stat().st_size
+    with pikepdf.open(str(ruta_entrada)) as pdf:
+        n_paginas = len(pdf.pages)
+        pdf.save(str(ruta_salida), compress_streams=comprimir_streams, linearize=False)
+    bytes_out = ruta_salida.stat().st_size
+    return InformeCompactado(
+        bytes_original=bytes_orig,
+        bytes_salida=bytes_out,
+        bytes_ahorrados=max(0, bytes_orig - bytes_out),
+        paginas=n_paginas,
+    )
+
+
+def descifrar_pdf(
+    ruta_entrada: str | Path,
+    ruta_salida: str | Path,
+    password: str = "",
+) -> bool:
+    """Abre un PDF cifrado (con contraseña o contraseña vacía) y lo guarda
+    sin cifrado, permitiendo su edición segura con el motor incremental."""
+    ruta_entrada = Path(ruta_entrada)
+    ruta_salida = Path(ruta_salida)
+    with pikepdf.open(str(ruta_entrada), password=password) as pdf:
+        pdf.save(str(ruta_salida))
+    return True
+
+
+def tiene_firma_digital(ruta: str | Path) -> bool:
+    """Detecta si el documento PDF contiene firmas digitales.
+
+    Comprueba campos de firma (/Sig) en el catálogo (/AcroForm), anotaciones
+    de tipo Widget/Sig en las páginas y la presencia de streams /ByteRange.
+    Cualquier edición en un documento firmado invalida legalmente la firma.
+    """
+    ruta = Path(ruta)
+    if not ruta.exists():
+        return False
+    try:
+        with pikepdf.open(str(ruta)) as doc:
+            acro = doc.Root.get("/AcroForm")
+            if acro:
+                fields = acro.get("/Fields", [])
+                for f in fields:
+                    if f.get("/FT") == pikepdf.Name("/Sig"):
+                        return True
+            for pg in doc.pages:
+                annots = pg.get("/Annots", [])
+                for a in annots:
+                    if a.get("/Subtype") == pikepdf.Name("/Widget") and a.get("/FT") == pikepdf.Name("/Sig"):
+                        return True
+                    if a.get("/Subtype") == pikepdf.Name("/Sig"):
+                        return True
+        datos = ruta.read_bytes()
+        if b"/ByteRange" in datos and b"/Contents" in datos and b"/SubFilter" in datos:
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def rotar_pagina(
+    ruta_original: str | Path,
+    ruta_salida: str | Path,
+    num_pagina: int,
+    angulo: int,
+    crear_backup: bool = True,
+) -> InformeGuardado:
+    """Rota una página del documento incrementando su clave /Rotate en 90, 180 o 270 grados.
+
+    No altera ningún stream de dibujo ni reconstruye el documento: redefine únicamente
+    el diccionario de la página de forma incremental.
+    """
+    ruta_original = Path(ruta_original)
+    ruta_salida = Path(ruta_salida)
+    es_mismo_archivo = False
+    try:
+        if ruta_salida.exists() and ruta_original.resolve() == ruta_salida.resolve():
+            es_mismo_archivo = True
+    except Exception:
+        pass
+
+    with pikepdf.open(str(ruta_original)) as pdf:
+        if num_pagina >= len(pdf.pages):
+            raise ErrorGuardado(f"página {num_pagina} fuera de rango (el documento tiene {len(pdf.pages)})")
+        pagina = pdf.pages[num_pagina]
+        rot_actual = int(pagina.get("/Rotate", 0))
+        nueva_rot = (rot_actual + angulo) % 360
+
+        pagina.Rotate = nueva_rot
+        num_pag, gen_pag = pagina.objgen
+        cuerpo_pag = pikepdf.Dictionary(pagina.obj).unparse()
+
+    objetos = {(num_pag, gen_pag): cuerpo_pag}
+
+    tmp_salida = ruta_salida.with_name(f".{ruta_salida.name}.{uuid.uuid4().hex[:8]}.tmp")
+    try:
+        informe = escribir_incremental(ruta_original, tmp_salida, objetos)
+        if es_mismo_archivo and crear_backup:
+            backup = ruta_salida.with_name(f"{ruta_salida.name}~")
+            try:
+                shutil.copy2(ruta_salida, backup)
+            except Exception:
+                pass
+        tmp_salida.replace(ruta_salida)
+        return informe
+    except Exception:
+        tmp_salida.unlink(missing_ok=True)
+        raise
+
+
+def extraer_imagen(
+    ruta_pdf: str | Path,
+    num_pagina: int,
+    nombre_xobject: str,
+    ruta_salida: str | Path,
+) -> Path:
+    """Extrae una imagen incrustada (XObject) en su resolución y calidad original a disco.
+
+    Admite exportar a PNG o JPG según la extensión de salida.
+    """
+    from PIL import Image
+    ruta_pdf = Path(ruta_pdf)
+    ruta_salida = Path(ruta_salida)
+
+    nombre_normalizado = "/" + nombre_xobject.lstrip("/")
+    with pikepdf.open(str(ruta_pdf)) as pdf:
+        if num_pagina >= len(pdf.pages):
+            raise ErrorGuardado(f"página {num_pagina} fuera de rango")
+        pg = pdf.pages[num_pagina]
+        xobjs = pg.Resources.get("/XObject")
+        if not xobjs or nombre_normalizado not in xobjs:
+            # Buscar sin barra o insensible
+            encontrado = None
+            if xobjs:
+                for k in xobjs.keys():
+                    if str(k).lstrip("/") == nombre_xobject.lstrip("/"):
+                        encontrado = k
+                        break
+            if not encontrado:
+                raise ErrorGuardado(f"XObject {nombre_xobject} no encontrado en la página {num_pagina}")
+            nombre_normalizado = encontrado
+
+        xobj = xobjs[nombre_normalizado]
+        pdf_image = pikepdf.PdfImage(xobj)
+        pil_img = pdf_image.as_pil_image()
+
+    formato = ruta_salida.suffix.lower()
+    if formato in (".jpg", ".jpeg"):
+        if pil_img.mode in ("RGBA", "P"):
+            pil_img = pil_img.convert("RGB")
+        pil_img.save(str(ruta_salida), "JPEG", quality=95)
+    else:
+        pil_img.save(str(ruta_salida), "PNG")
+    return ruta_salida
+
+
+def reemplazar_imagen(
+    ruta_original: str | Path,
+    ruta_salida: str | Path,
+    num_pagina: int,
+    nombre_xobject: str,
+    ruta_nueva_imagen: str | Path,
+    crear_backup: bool = True,
+) -> InformeGuardado:
+    """Reemplaza la imagen de un XObject por una nueva imagen desde disco.
+
+    Preserva el 100% de la maquetación (coordenadas, rotación y escala de la matriz Do en el stream)
+    y conserva el prefijo original del archivo PDF intacto mediante actualización incremental.
+    """
+    from PIL import Image
+    ruta_original = Path(ruta_original)
+    ruta_salida = Path(ruta_salida)
+    ruta_nueva_imagen = Path(ruta_nueva_imagen)
+
+    if not ruta_nueva_imagen.exists():
+        raise ErrorGuardado(f"La imagen {ruta_nueva_imagen} no existe")
+
+    es_mismo_archivo = False
+    try:
+        if ruta_salida.exists() and ruta_original.resolve() == ruta_salida.resolve():
+            es_mismo_archivo = True
+    except Exception:
+        pass
+
+    nombre_normalizado = "/" + nombre_xobject.lstrip("/")
+    with pikepdf.open(str(ruta_original)) as pdf:
+        if num_pagina >= len(pdf.pages):
+            raise ErrorGuardado(f"página {num_pagina} fuera de rango")
+        pg = pdf.pages[num_pagina]
+        xobjs = pg.Resources.get("/XObject")
+        if not xobjs or nombre_normalizado not in xobjs:
+            encontrado = None
+            if xobjs:
+                for k in xobjs.keys():
+                    if str(k).lstrip("/") == nombre_xobject.lstrip("/"):
+                        encontrado = k
+                        break
+            if not encontrado:
+                raise ErrorGuardado(f"XObject {nombre_xobject} no encontrado en la página {num_pagina}")
+            nombre_normalizado = encontrado
+
+        xobj = xobjs[nombre_normalizado]
+        num_obj, gen_obj = xobj.objgen
+
+    # Cargar y codificar la nueva imagen con Pillow
+    with Image.open(str(ruta_nueva_imagen)) as img:
+        ancho, alto = img.size
+        # Normalizar a RGB o L (escala de grises)
+        if img.mode == "L":
+            cs = b"/DeviceGray"
+            raw_bytes = img.tobytes()
+        elif img.mode in ("RGB", "RGBA"):
+            cs = b"/DeviceRGB"
+            raw_bytes = img.convert("RGB").tobytes()
+        elif img.mode == "CMYK":
+            cs = b"/DeviceCMYK"
+            raw_bytes = img.tobytes()
+        else:
+            cs = b"/DeviceRGB"
+            raw_bytes = img.convert("RGB").tobytes()
+
+    payload = zlib.compress(raw_bytes, 9)
+    cabecera = (
+        b"<< /Type /XObject /Subtype /Image "
+        b"/Width " + str(ancho).encode("ascii") + b" "
+        b"/Height " + str(alto).encode("ascii") + b" "
+        b"/BitsPerComponent 8 "
+        b"/ColorSpace " + cs + b" "
+        b"/Filter /FlateDecode "
+        b"/Length " + str(len(payload)).encode("ascii") + b" >>\nstream\n"
+    )
+    cuerpo_xobj = cabecera + payload + b"\nendstream"
+
+    objetos = {(num_obj, gen_obj): cuerpo_xobj}
+
+    tmp_salida = ruta_salida.with_name(f".{ruta_salida.name}.{uuid.uuid4().hex[:8]}.tmp")
+    try:
+        informe = escribir_incremental(ruta_original, tmp_salida, objetos)
+        if es_mismo_archivo and crear_backup:
+            backup = ruta_salida.with_name(f"{ruta_salida.name}~")
+            try:
+                shutil.copy2(ruta_salida, backup)
+            except Exception:
+                pass
+        tmp_salida.replace(ruta_salida)
+        return informe
+    except Exception:
+        tmp_salida.unlink(missing_ok=True)
+        raise
+

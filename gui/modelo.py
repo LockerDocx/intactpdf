@@ -30,7 +30,9 @@ from nucleo.editar import (borrar_objeto, escalar_objeto, mover_objeto)
 from nucleo.editar_texto import escala_de_run, plan_editar_texto
 from nucleo.fuentes import resolver_fuentes
 from nucleo.geometria import Caja
-from nucleo.guardar import ErrorGuardado, guardar_pagina_editada
+from nucleo.guardar import (ErrorGuardado, guardar_pagina_editada,
+                            tiene_firma_digital, rotar_pagina,
+                            extraer_imagen, reemplazar_imagen)
 from nucleo.objetos import ContenidoPagina, Objeto, extraer_objetos
 
 
@@ -59,9 +61,11 @@ class Sesion:
     seleccion: Objeto | None = None
     objetos_nuevos: dict = field(default_factory=dict)
     historial: list[Paso] = field(default_factory=list)
+    pila_rehacer: list[Paso] = field(default_factory=list)
     ultimo_mensaje: str = ""
     _datos_al_abrir: bytes = b""
     ultimo_aviso: str = ""
+    tiene_firma: bool = False
     # Contador que sube con cada cambio: la ventana lo usa para saber cuándo
     # volver a renderizar sin tener que comparar nada.
     version: int = 0
@@ -76,7 +80,9 @@ class Sesion:
         self.ruta = Path(ruta)
         self.num_pagina = num_pagina
         self.historial.clear()
+        self.pila_rehacer.clear()
         self.objetos_nuevos.clear()
+        self.tiene_firma = False
         self.version += 1
         self._recargar()
         self.seleccion = None
@@ -85,6 +91,7 @@ class Sesion:
 
     def _recargar(self) -> None:
         """Relee el stream de la página y vuelve a extraer y alinear objetos."""
+        self.tiene_firma = tiene_firma_digital(self.ruta)
         with pikepdf.open(str(self.ruta)) as pdf:
             if pdf.is_encrypted:
                 # Se rechaza AL ABRIR, no al pintar: un error dentro del bucle
@@ -199,9 +206,10 @@ class Sesion:
     # -- edición ----------------------------------------------------------
 
     def _apuntar(self, descripcion: str) -> None:
-        """Guarda el estado anterior para poder deshacer."""
+        """Guarda el estado anterior para poder deshacer y vacía rehacer."""
         self.historial.append(Paso(self.datos, dict(self.objetos_nuevos),
                                    self.num_pagina, descripcion))
+        self.pila_rehacer.clear()
 
     def _aplicar(self, nuevos: bytes, objetos: dict | None = None,
                  mensaje: str = "") -> bool:
@@ -313,16 +321,23 @@ class Sesion:
         self.ultimo_aviso = aviso
         return True
 
-    # -- deshacer ---------------------------------------------------------
+    # -- deshacer y rehacer -----------------------------------------------
 
     @property
     def puede_deshacer(self) -> bool:
         return bool(self.historial)
 
+    @property
+    def puede_rehacer(self) -> bool:
+        return bool(self.pila_rehacer)
+
     def deshacer(self) -> bool:
         if not self.historial:
             return False
         paso = self.historial.pop()
+        # Guardar estado actual en la pila de rehacer antes de revertir
+        self.pila_rehacer.append(Paso(self.datos, dict(self.objetos_nuevos),
+                                      self.num_pagina, paso.descripcion))
         self.datos = paso.datos
         self.objetos_nuevos = paso.objetos_nuevos
         self.num_pagina = paso.num_pagina
@@ -330,6 +345,22 @@ class Sesion:
         self.version += 1
         self._recargar_manteniendo_datos()
         self.ultimo_mensaje = f"Deshecho: {paso.descripcion}"
+        return True
+
+    def rehacer(self) -> bool:
+        if not self.pila_rehacer:
+            return False
+        paso = self.pila_rehacer.pop()
+        # Guardar en historial antes de volver a aplicar
+        self.historial.append(Paso(self.datos, dict(self.objetos_nuevos),
+                                   self.num_pagina, paso.descripcion))
+        self.datos = paso.datos
+        self.objetos_nuevos = paso.objetos_nuevos
+        self.num_pagina = paso.num_pagina
+        self.seleccion = None
+        self.version += 1
+        self._recargar_manteniendo_datos()
+        self.ultimo_mensaje = f"Rehecho: {paso.descripcion}"
         return True
 
     # -- salida -----------------------------------------------------------
@@ -424,13 +455,23 @@ class Sesion:
         return Image.frombuffer("RGBA", (ancho, alto), bytes(buf), "raw", "BGRA",
                                 stride, 1).convert("RGB")
 
-    def guardar(self, destino: Path | str) -> str:
+    def guardar(self, destino: Path | str | None = None, crear_backup: bool = True) -> str:
         """Escribe el resultado. Devuelve el mensaje para la barra de estado."""
         if not self.ruta:
             raise ValueError("no hay ningún documento abierto")
+        if destino is None:
+            destino = self.ruta
         destino = Path(destino)
+        es_mismo = False
+        try:
+            if destino.exists() and destino.resolve() == self.ruta.resolve():
+                es_mismo = True
+        except Exception:
+            pass
+
         info = guardar_pagina_editada(self.ruta, destino, self.num_pagina,
-                                      [self.datos], self.objetos_nuevos)
+                                      [self.datos], self.objetos_nuevos,
+                                      crear_backup=crear_backup)
         if not info.prefijo_intacto:
             # No debería pasar nunca. Si pasa, hay que decirlo en voz alta en
             # lugar de dar el guardado por bueno.
@@ -438,9 +479,19 @@ class Sesion:
                                  "original. Algo ha ido mal.")
             return self.ultimo_aviso
         self.ultimo_aviso = ""
-        self.ultimo_mensaje = (
-            f"Guardado {destino.name}: {info.bytes_anadidos:,} bytes añadidos "
-            f"a los {info.bytes_original:,} del original, que siguen intactos")
+        if es_mismo:
+            self._datos_al_abrir = self.datos
+            self.objetos_nuevos.clear()
+            self.historial.clear()
+            self._cache_version = -1
+            self.version += 1
+            self.ultimo_mensaje = (
+                f"Guardado en {destino.name} (copia previa en {destino.name}~): "
+                f"{info.bytes_anadidos:,} bytes añadidos de forma incremental")
+        else:
+            self.ultimo_mensaje = (
+                f"Guardado {destino.name}: {info.bytes_anadidos:,} bytes añadidos "
+                f"a los {info.bytes_original:,} del original, que siguen intactos")
         return self.ultimo_mensaje
 
     # -- ayudas para la ventana ------------------------------------------
@@ -461,3 +512,45 @@ class Sesion:
 
     def escala_de_run(self, objeto: Objeto) -> float:
         return escala_de_run(objeto) if objeto.tipo == "texto" else 1.0
+
+    # -- operaciones de página e imagen ----------------------------------
+
+    def rotar(self, angulo: int = 90) -> bool:
+        """Gira la página actual sumando `angulo` grados de forma incremental."""
+        if not self.ruta:
+            return False
+        self._apuntar(f"rotar página {angulo}°")
+        info = rotar_pagina(self.ruta, self.ruta, self.num_pagina, angulo, crear_backup=True)
+        self.version += 1
+        self._recargar()
+        self.ultimo_mensaje = f"Página rotada {angulo}° ({info.bytes_anadidos:,} bytes añadidos de forma incremental)"
+        return True
+
+    def extraer_imagen_seleccionada(self, ruta_destino: Path | str) -> Path | None:
+        """Exporta la imagen actualmente seleccionada a archivo PNG o JPEG."""
+        if not self.ruta or not self.seleccion or self.seleccion.tipo != "imagen":
+            self.ultimo_aviso = "No hay ninguna imagen seleccionada para extraer"
+            return None
+        nombre = getattr(self.seleccion, "nombre_xobject", "")
+        if not nombre:
+            self.ultimo_aviso = "El objeto imagen no tiene nombre de XObject válido"
+            return None
+        return extraer_imagen(self.ruta, self.num_pagina, nombre, ruta_destino)
+
+    def reemplazar_imagen_seleccionada(self, ruta_nueva_imagen: Path | str) -> bool:
+        """Sustituye la imagen seleccionada por otra de disco, preservando posición y escala."""
+        if not self.ruta or not self.seleccion or self.seleccion.tipo != "imagen":
+            self.ultimo_aviso = "No hay ninguna imagen seleccionada para reemplazar"
+            return False
+        nombre = getattr(self.seleccion, "nombre_xobject", "")
+        if not nombre:
+            self.ultimo_aviso = "El objeto imagen no tiene nombre de XObject válido"
+            return False
+        self._apuntar(f"reemplazar imagen {nombre}")
+        info = reemplazar_imagen(self.ruta, self.ruta, self.num_pagina, nombre,
+                                 ruta_nueva_imagen, crear_backup=True)
+        self.version += 1
+        self._recargar()
+        self.ultimo_mensaje = f"Imagen {nombre} reemplazada ({info.bytes_anadidos:,} bytes añadidos de forma incremental)"
+        return True
+

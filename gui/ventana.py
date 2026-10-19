@@ -77,6 +77,20 @@ class Lienzo(Gtk.DrawingArea):
         clic.connect("pressed", self._pulsado)
         self.add_controller(clic)
 
+        scroll = Gtk.EventControllerScroll.new(
+            Gtk.EventControllerScrollFlags.VERTICAL | Gtk.EventControllerScrollFlags.BOTH_AXES)
+        scroll.connect("scroll", self._al_hacer_scroll)
+        self.add_controller(scroll)
+
+    def _al_hacer_scroll(self, ctrl, _dx, dy):
+        """Ctrl + rueda del ratón: zoom continuo centrado en el documento."""
+        estado = ctrl.get_current_event_state()
+        if bool(estado & Gdk.ModifierType.CONTROL_MASK):
+            factor = 1.15 if dy < 0 else (1.0 / 1.15)
+            self.ventana.cambiar_zoom(factor)
+            return True
+        return False
+
     # -- geometría --------------------------------------------------------
 
     def _matriz(self):
@@ -276,6 +290,11 @@ class Ventana(Adw.ApplicationWindow):
         self.cinta = self._construir_cinta()
         self.vista = Adw.ToolbarView()
         self.vista.add_top_bar(self._cabecera())
+        # Banner de advertencia de firma digital existente
+        self.banner_firma = Adw.Banner.new(
+            "Documento firmado digitalmente: guardar modificaciones invalidará la validez legal de las firmas.")
+        self.banner_firma.set_revealed(False)
+        self.vista.add_top_bar(self.banner_firma)
         # La cinta va DEBAJO de la barra de título, como en Word: primero el
         # nombre del fichero, y debajo todas las opciones.
         self.vista.add_top_bar(self.cinta)
@@ -325,8 +344,32 @@ class Ventana(Adw.ApplicationWindow):
             Gtk.ShortcutTrigger.parse_string("<Control>z"),
             Gtk.CallbackAction.new(lambda *_: self.accion_deshacer())))
         ayuda.add_shortcut(Gtk.Shortcut.new(
+            Gtk.ShortcutTrigger.parse_string("<Control><Shift>z"),
+            Gtk.CallbackAction.new(lambda *_: self.accion_rehacer())))
+        ayuda.add_shortcut(Gtk.Shortcut.new(
+            Gtk.ShortcutTrigger.parse_string("<Control>y"),
+            Gtk.CallbackAction.new(lambda *_: self.accion_rehacer())))
+        ayuda.add_shortcut(Gtk.Shortcut.new(
+            Gtk.ShortcutTrigger.parse_string("<Control>c"),
+            Gtk.CallbackAction.new(lambda *_: self.accion_copiar())))
+        ayuda.add_shortcut(Gtk.Shortcut.new(
+            Gtk.ShortcutTrigger.parse_string("<Control>plus"),
+            Gtk.CallbackAction.new(lambda *_: self.cambiar_zoom(1.25))))
+        ayuda.add_shortcut(Gtk.Shortcut.new(
+            Gtk.ShortcutTrigger.parse_string("<Control>equal"),
+            Gtk.CallbackAction.new(lambda *_: self.cambiar_zoom(1.25))))
+        ayuda.add_shortcut(Gtk.Shortcut.new(
+            Gtk.ShortcutTrigger.parse_string("<Control>minus"),
+            Gtk.CallbackAction.new(lambda *_: self.cambiar_zoom(1 / 1.25))))
+        ayuda.add_shortcut(Gtk.Shortcut.new(
+            Gtk.ShortcutTrigger.parse_string("<Control>0"),
+            Gtk.CallbackAction.new(lambda *_: self.zoom_real())))
+        ayuda.add_shortcut(Gtk.Shortcut.new(
             Gtk.ShortcutTrigger.parse_string("<Control>s"),
             Gtk.CallbackAction.new(lambda *_: self.accion_guardar())))
+        ayuda.add_shortcut(Gtk.Shortcut.new(
+            Gtk.ShortcutTrigger.parse_string("<Control><Shift>s"),
+            Gtk.CallbackAction.new(lambda *_: self.accion_guardar_como())))
         ayuda.add_shortcut(Gtk.Shortcut.new(
             Gtk.ShortcutTrigger.parse_string("<Control>o"),
             Gtk.CallbackAction.new(lambda *_: self.accion_abrir())))
@@ -435,8 +478,12 @@ class Ventana(Adw.ApplicationWindow):
                      "Abrir un PDF (Ctrl+O)", self.accion_abrir)
         cinta.vigilar(b, lambda s: True)
         b = g.grande("document-save-symbolic", "Guardar",
-                     "Guardar el resultado en otro fichero (Ctrl+S)",
+                     "Guardar sobre el original (Ctrl+S)",
                      self.accion_guardar)
+        cinta.vigilar(b, lambda s: s.abierto)
+        b = g.grande("document-save-as-symbolic", "Guardar como",
+                     "Guardar en otro fichero (Ctrl+Mayús+S)",
+                     self.accion_guardar_como)
         cinta.vigilar(b, lambda s: s.abierto)
         b = g.grande("edit-undo-symbolic", "Deshacer",
                      "Deshacer el último cambio (Ctrl+Z)", self.accion_deshacer)
@@ -493,6 +540,16 @@ class Ventana(Adw.ApplicationWindow):
                           f"Escalar al {texto} del tamaño actual",
                           lambda f=factor: self.escalar_a(f))
             cinta.vigilar(b, lambda s: s.seleccion is not None)
+
+        g = objeto.grupo("Imagen")
+        b = g.grande("document-save-symbolic", "Extraer",
+                     "Guardar imagen seleccionada en archivo",
+                     self.accion_extraer_imagen)
+        cinta.vigilar(b, lambda s: bool(s.seleccion and s.seleccion.tipo == "imagen"))
+        b = g.grande("document-revert-symbolic", "Reemplazar",
+                     "Sustituir la imagen por otra conservando posición",
+                     self.accion_reemplazar_imagen)
+        cinta.vigilar(b, lambda s: bool(s.seleccion and s.seleccion.tipo == "imagen"))
 
         g = objeto.grupo("Borrar")
         b = g.grande("user-trash-symbolic", "Borrar",
@@ -565,6 +622,14 @@ class Ventana(Adw.ApplicationWindow):
         g.fila()
         self._dato(g, "doc_objetos", "—")
 
+        g = pagina.grupo("Girar")
+        b = g.icono("object-rotate-right-symbolic", "Girar 90° a la derecha",
+                    lambda: self.accion_rotar(90))
+        cinta.vigilar(b, lambda s: s.abierto)
+        b = g.icono("object-rotate-left-symbolic", "Girar 90° a la izquierda",
+                    lambda: self.accion_rotar(270))
+        cinta.vigilar(b, lambda s: s.abierto)
+
         g = pagina.grupo("Herramientas")
         b = g.grande("dialog-information-symbolic", "Información",
                      "Qué hay dentro del documento", self.ver_informacion)
@@ -574,6 +639,10 @@ class Ventana(Adw.ApplicationWindow):
         cinta.vigilar(b, lambda s: s.abierto)
         b = g.grande("system-search-symbolic", "Comprobar",
                      "Validar el fichero con libqpdf", self.comprobar)
+        cinta.vigilar(b, lambda s: s.abierto)
+        b = g.grande("edit-clear-all-symbolic", "Compactar",
+                     "Purgar historial de revisiones (redacción segura)",
+                     self.accion_compactar)
         cinta.vigilar(b, lambda s: s.abierto)
 
         # ---------------------------------------------------------------- Ver
@@ -719,6 +788,7 @@ class Ventana(Adw.ApplicationWindow):
         self.cinta.refrescar(s)
 
         if not abierto:
+            self.banner_firma.set_revealed(False)
             self.l_estado.set_text("Abre un PDF para empezar.")
             self.l_aviso.set_text("")
             for clave in ("pagina", "sel_tipo", "sel_caja", "sel_tam", "txt_fuente",
@@ -728,6 +798,7 @@ class Ventana(Adw.ApplicationWindow):
             self._poner("sel_tipo", "nada seleccionado")
             return
 
+        self.banner_firma.set_revealed(getattr(s, "tiene_firma", False))
         self.set_title(f"{s.ruta.name} — IntactPDF")
         self.titulo.set_subtitle(f"{s.ruta.name}  ·  página "
                                  f"{s.num_pagina + 1} de {s.n_paginas}")
@@ -867,10 +938,34 @@ class Ventana(Adw.ApplicationWindow):
     def accion_guardar(self):
         if not self.sesion.abierto:
             return
+        if self.sesion.ruta:
+            try:
+                self.sesion.guardar()
+                self.actualizar()
+                self.lienzo.queue_draw()
+                return
+            except Exception as e:
+                self.error("No se pudo guardar", str(e))
+                return
+        self.accion_guardar_como()
+
+    def accion_guardar_como(self):
+        if not self.sesion.abierto:
+            return
         dlg = Gtk.FileDialog()
-        dlg.set_title("Guardar el PDF")
-        dlg.set_initial_name(self.sesion.ruta.stem + "-editado.pdf")
+        dlg.set_title("Guardar el PDF como")
+        nombre = (self.sesion.ruta.stem + "-editado.pdf") if self.sesion.ruta else "documento.pdf"
+        dlg.set_initial_name(nombre)
         dlg.save(self, None, self._guardado)
+
+    def accion_compactar(self):
+        if not self.sesion.abierto:
+            return
+        dlg = Gtk.FileDialog()
+        dlg.set_title("Guardar PDF compactado (sin historial previo)")
+        nombre = (self.sesion.ruta.stem + "-compactado.pdf") if self.sesion.ruta else "compactado.pdf"
+        dlg.set_initial_name(nombre)
+        dlg.save(self, None, self._compactado)
 
     def _guardado(self, dlg, resultado):
         try:
@@ -887,6 +982,112 @@ class Ventana(Adw.ApplicationWindow):
             return
         self.actualizar()
 
+    def _compactado(self, dlg, resultado):
+        try:
+            fichero = dlg.save_finish(resultado)
+        except GLib.Error:
+            return
+        ruta = Path(fichero.get_path())
+        if not ruta.name.lower().endswith(".pdf"):
+            ruta = ruta.with_suffix(".pdf")
+        from nucleo.guardar import compactar_pdf
+        try:
+            import uuid
+            tmp_para_compactar = ruta.with_name(f".{ruta.name}.{uuid.uuid4().hex[:8]}.tmp.pdf")
+            self.sesion.guardar(tmp_para_compactar, crear_backup=False)
+            res = compactar_pdf(tmp_para_compactar, ruta)
+            tmp_para_compactar.unlink(missing_ok=True)
+            self.sesion.ultimo_mensaje = (
+                f"Compactado {ruta.name}: {res.bytes_salida:,} bytes "
+                f"({res.bytes_ahorrados:,} bytes purgados del historial)")
+            self.actualizar()
+        except Exception as e:
+            self.error("No se pudo compactar", str(e))
+
+    def accion_copiar(self):
+        s = self.sesion
+        if not s.abierto or not s.seleccion:
+            return
+        if s.seleccion.tipo == "texto":
+            texto = getattr(s.seleccion, "texto", "") or ""
+            if texto:
+                clipboard = Gdk.Display.get_default().get_clipboard()
+                clipboard.set(texto)
+                s.ultimo_mensaje = f"Copiado al portapapeles: “{texto[:40]}{'…' if len(texto) > 40 else ''}”"
+                self.actualizar()
+
+    def accion_rotar(self, angulo: int = 90):
+        if not self.sesion.abierto:
+            return
+        try:
+            if self.sesion.rotar(angulo):
+                self.actualizar()
+                self.lienzo.queue_draw()
+        except Exception as e:
+            self.error("No se pudo girar la página", str(e))
+
+    def accion_extraer_imagen(self):
+        s = self.sesion
+        if not s.abierto or not s.seleccion or s.seleccion.tipo != "imagen":
+            return
+        dlg = Gtk.FileDialog()
+        dlg.set_title("Extraer imagen a archivo")
+        nombre_base = s.seleccion.nombre_xobject.lstrip("/") or "imagen"
+        dlg.set_initial_name(f"{nombre_base}.png")
+        filtro_png = Gtk.FileFilter()
+        filtro_png.set_name("Imagen PNG (*.png)")
+        filtro_png.add_pattern("*.png")
+        filtro_jpg = Gtk.FileFilter()
+        filtro_jpg.set_name("Imagen JPEG (*.jpg, *.jpeg)")
+        filtro_jpg.add_pattern("*.jpg")
+        filtro_jpg.add_pattern("*.jpeg")
+        filtros = Gio.ListStore.new(Gtk.FileFilter)
+        filtros.append(filtro_png)
+        filtros.append(filtro_jpg)
+        dlg.set_filters(filtros)
+        dlg.save(self, None, self._extraer_imagen_guardada)
+
+    def _extraer_imagen_guardada(self, dlg, resultado):
+        try:
+            fichero = dlg.save_finish(resultado)
+        except GLib.Error:
+            return
+        ruta = Path(fichero.get_path())
+        try:
+            self.sesion.extraer_imagen_seleccionada(ruta)
+            self.sesion.ultimo_mensaje = f"Imagen extraída correctamente a {ruta.name}"
+            self.actualizar()
+        except Exception as e:
+            self.error("No se pudo extraer la imagen", str(e))
+
+    def accion_reemplazar_imagen(self):
+        s = self.sesion
+        if not s.abierto or not s.seleccion or s.seleccion.tipo != "imagen":
+            return
+        dlg = Gtk.FileDialog()
+        dlg.set_title("Seleccionar nueva imagen")
+        filtro = Gtk.FileFilter()
+        filtro.set_name("Archivos de imagen (PNG, JPG, TIFF, WebP)")
+        for m in ("image/png", "image/jpeg", "image/webp", "image/tiff"):
+            filtro.add_mime_type(m)
+        filtros = Gio.ListStore.new(Gtk.FileFilter)
+        filtros.append(filtro)
+        dlg.set_filters(filtros)
+        dlg.open(self, None, self._reemplazar_imagen_abierta)
+
+    def _reemplazar_imagen_abierta(self, dlg, resultado):
+        try:
+            fichero = dlg.open_finish(resultado)
+        except GLib.Error:
+            return
+        ruta = Path(fichero.get_path())
+        try:
+            if self.sesion.reemplazar_imagen_seleccionada(ruta):
+                self.actualizar()
+                self.lienzo.queue_draw()
+        except Exception as e:
+            self.error("No se pudo reemplazar la imagen", str(e))
+
     def accion_borrar(self):
         if self.sesion.borrar():
             self.actualizar()
@@ -894,6 +1095,11 @@ class Ventana(Adw.ApplicationWindow):
 
     def accion_deshacer(self):
         if self.sesion.deshacer():
+            self.actualizar()
+            self.lienzo.queue_draw()
+
+    def accion_rehacer(self):
+        if self.sesion.rehacer():
             self.actualizar()
             self.lienzo.queue_draw()
 
@@ -1188,6 +1394,8 @@ class Aplicacion(Adw.Application):
                            ("acerca", lambda *_: self.acerca()),
                            ("abrir", lambda *_: self.en_ventana("accion_abrir")),
                            ("guardar", lambda *_: self.en_ventana("accion_guardar")),
+                           ("guardar_como", lambda *_: self.en_ventana("accion_guardar_como")),
+                           ("compactar", lambda *_: self.en_ventana("accion_compactar")),
                            ("check", lambda *_: self.en_ventana("comprobar")),
                            ("fonts", lambda *_: self.en_ventana("ver_fuentes"))):
             accion = Gio.SimpleAction.new(nombre, None)

@@ -197,3 +197,204 @@ def test_la_ventana_no_abre_un_documento_cifrado():
         raise AssertionError("tenía que negarse a abrir")
     except ErrorGuardado as e:
         assert "cifrado" in str(e)
+
+
+def test_guardado_sobre_el_mismo_archivo_con_backup():
+    """Guardar sobre el original genera backup y mantiene el prefijo intacto."""
+    import shutil
+    origen = CORPUS / "00_baseline.pdf"
+    inplace = TMP / "test_inplace.pdf"
+    inplace_backup = TMP / "test_inplace.pdf~"
+    inplace_backup.unlink(missing_ok=True)
+    shutil.copy2(origen, inplace)
+    bytes_orig = origen.read_bytes()
+
+    with pikepdf.open(inplace) as pdf:
+        pagina = pdf.pages[0]
+        datos = pagina["/Contents"].read_bytes()
+        fuentes = resolver_fuentes(pagina)
+    contenido = extraer_objetos(datos, fuentes)
+    objeto = [o for o in contenido.objetos if o.tipo == "texto"][0]
+    nuevos = escalar_objeto(datos, contenido, objeto, 0.9, 0.9, objeto.caja.centro)
+
+    informe = guardar_pagina_editada(inplace, inplace, 0, [nuevos], crear_backup=True)
+    assert informe.prefijo_intacto is True
+    assert inplace_backup.exists()
+    assert inplace_backup.read_bytes() == bytes_orig
+    assert inplace.read_bytes()[:len(bytes_orig)] == bytes_orig
+    assert inplace.stat().st_size > len(bytes_orig)
+
+
+def test_compactar_pdf_purga_historial():
+    """Compactar un PDF elimina revisiones incrementales previas."""
+    from nucleo.guardar import compactar_pdf
+    original = CORPUS / "00_baseline.pdf"
+    incremental = TMP / "para_compactar.pdf"
+    compactado = TMP / "compactado.pdf"
+
+    with pikepdf.open(original) as pdf:
+        pagina = pdf.pages[0]
+        datos = pagina["/Contents"].read_bytes()
+        fuentes = resolver_fuentes(pagina)
+    contenido = extraer_objetos(datos, fuentes)
+    objeto = [o for o in contenido.objetos if o.tipo == "texto"][0]
+    nuevos = escalar_objeto(datos, contenido, objeto, 0.8, 0.8, objeto.caja.centro)
+    guardar_pagina_editada(original, incremental, 0, [nuevos])
+
+    res = compactar_pdf(incremental, compactado)
+    assert compactado.exists()
+    assert res.bytes_salida < res.bytes_original
+    assert res.bytes_ahorrados > 0
+    assert res.paginas == 1
+
+
+def test_compactar_demuestra_eliminacion_irreversible_de_datos():
+    """Demostración empírica de redacción: el contenido sobrescrito/borrado
+    continúa en el binario incremental previo, pero desaparece al 100%
+    del binario tras compactar (sin rastros en xref, streams ni objetos)."""
+    from nucleo.guardar import compactar_pdf, escribir_incremental, cuerpo_stream
+
+    secreto = b"SECRETO_BANCARIO_IBAN_ES9121000418450200051332"
+    # PDF sintético donde el secreto está en texto claro en el objeto 4
+    pdf_raw = (
+        b"%PDF-1.4\n"
+        b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
+        b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>\nendobj\n"
+        b"4 0 obj\n<< /Length " + str(len(secreto) + 40).encode() + b" >>\nstream\n"
+        b"BT /F1 12 Tf 72 700 Td (" + secreto + b") Tj ET\nendstream\nendobj\n"
+        b"xref\n0 5\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000204 00000 n \n"
+        b"trailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n320\n%%EOF\n"
+    )
+    orig = TMP / "pdf_con_secreto.pdf"
+    orig.write_bytes(pdf_raw)
+    assert secreto in orig.read_bytes()
+
+    # Paso 1: Edición incremental donde se redacta/borra el secreto sustituyendo por texto censurado
+    inc = TMP / "pdf_secreto_incremental.pdf"
+    escribir_incremental(orig, inc, {(4, 0): cuerpo_stream(b"BT /F1 12 Tf 72 700 Td (CENSURADO) Tj ET")})
+    # En el archivo incremental, el secreto SIGUE EXISTIENDO en los bytes iniciales del archivo
+    assert secreto in inc.read_bytes(), "el guardado incremental preserva revisiones anteriores"
+
+    # Paso 2: Compactar el PDF (purga de objetos huérfanos y revisiones obsoletas)
+    comp = TMP / "pdf_secreto_compactado.pdf"
+    res = compactar_pdf(inc, comp)
+    assert comp.exists()
+    assert res.bytes_salida < res.bytes_original
+    # Comprobación de redacción segura irreversible: el secreto NO existe en ningún byte del fichero
+    assert secreto not in comp.read_bytes(), "la compactación debe purgar irrevocablemente el contenido antiguo"
+
+
+def test_descifrar_pdf_permite_edicion_posterior():
+    """Descifrar un PDF permite trabajarlo luego con el motor incremental."""
+    from nucleo.guardar import descifrar_pdf
+    cifrado = TMP / "cifrado_para_descifrar.pdf"
+    descifrado = TMP / "descifrado.pdf"
+    cifrado.unlink(missing_ok=True)
+    descifrado.unlink(missing_ok=True)
+
+    pdf = pikepdf.new()
+    pdf.add_blank_page(page_size=(595, 842))
+    pdf.pages[0].Contents = pdf.make_stream(b"BT /F1 24 Tf 1 0 0 1 72 700 Tm (TEST) Tj ET")
+    pdf.save(cifrado, encryption=pikepdf.Encryption(owner="pass", user=""))
+    pdf.close()
+
+    assert esta_cifrado(cifrado) is True
+    assert descifrar_pdf(cifrado, descifrado) is True
+    assert esta_cifrado(descifrado) is False
+
+    # Ahora debe permitir guardar ediciones incrementales sin rechazar por cifrado
+    salida = TMP / "descifrado_editado.pdf"
+    salida.unlink(missing_ok=True)
+    with pikepdf.open(descifrado) as pdf:
+        datos = pdf.pages[0]["/Contents"].read_bytes()
+    info = guardar_pagina_editada(descifrado, salida, 0, [datos], verificar=False)
+    assert info.prefijo_intacto is True
+    assert salida.exists()
+
+
+def test_deteccion_firma_digital():
+    """Detecta documentos con firmas digitales y avisa antes de editar."""
+    from nucleo.guardar import tiene_firma_digital
+    no_firmado = TMP / "sin_firma.pdf"
+    firmado = TMP / "con_firma.pdf"
+    no_firmado.unlink(missing_ok=True)
+    firmado.unlink(missing_ok=True)
+
+    pdf = pikepdf.new()
+    pdf.add_blank_page()
+    pdf.save(no_firmado)
+    pdf.close()
+    assert tiene_firma_digital(no_firmado) is False
+
+    pdf2 = pikepdf.new()
+    pdf2.add_blank_page()
+    sig_field = pdf2.make_indirect(pikepdf.Dictionary({
+        "/FT": pikepdf.Name("/Sig"),
+        "/T": pikepdf.String("Firma1"),
+        "/V": pikepdf.Dictionary({
+            "/Type": pikepdf.Name("/Sig"),
+            "/Filter": pikepdf.Name("/Adobe.PPKLite"),
+            "/SubFilter": pikepdf.Name("/adbe.pkcs7.detached"),
+            "/ByteRange": pikepdf.Array([0, 100, 200, 300])
+        })
+    }))
+    pdf2.Root.AcroForm = pikepdf.Dictionary({
+        "/Fields": pikepdf.Array([sig_field])
+    })
+    pdf2.save(firmado)
+    pdf2.close()
+    assert tiene_firma_digital(firmado) is True
+
+
+def test_rotar_pagina_incremental():
+    """Rotar una página preserva el prefijo original intacto y actualiza /Rotate."""
+    from nucleo.guardar import rotar_pagina
+    orig = CORPUS / "00_baseline.pdf"
+    salida = TMP / "rotado_90.pdf"
+    salida.unlink(missing_ok=True)
+
+    info = rotar_pagina(orig, salida, 0, 90)
+    assert info.prefijo_intacto is True
+    assert salida.exists()
+    assert salida.read_bytes().startswith(orig.read_bytes())
+
+    with pikepdf.open(salida) as pdf:
+        assert int(pdf.pages[0].get("/Rotate", 0)) == 90
+
+
+def test_extraer_y_reemplazar_imagen():
+    """Extraer una imagen a disco y reemplazarla manteniendo el prefijo intacto."""
+    from PIL import Image
+    from nucleo.guardar import extraer_imagen, reemplazar_imagen
+
+    orig = CORPUS / "04_imagen_smask.pdf"
+    with pikepdf.open(orig) as pdf:
+        nombre_xobj = list(pdf.pages[0].Resources.XObject.keys())[0]
+
+    # 1. Extraer imagen
+    img_extraida = TMP / "extraida.png"
+    img_extraida.unlink(missing_ok=True)
+    res_path = extraer_imagen(orig, 0, nombre_xobj, img_extraida)
+    assert res_path.exists()
+    with Image.open(res_path) as im:
+        assert im.size == (300, 200)
+
+    # 2. Crear una nueva imagen de sustitución (50x50 verde)
+    nueva_img = TMP / "sustituta.png"
+    Image.new("RGB", (50, 50), color="green").save(nueva_img)
+
+    # 3. Reemplazar imagen de forma incremental
+    pdf_reemplazado = TMP / "img_reemplazada.pdf"
+    pdf_reemplazado.unlink(missing_ok=True)
+    info = reemplazar_imagen(orig, pdf_reemplazado, 0, nombre_xobj, nueva_img)
+    assert info.prefijo_intacto is True
+    assert pdf_reemplazado.read_bytes().startswith(orig.read_bytes())
+
+    # 4. Verificar que el XObject en el PDF final tiene las nuevas dimensiones
+    with pikepdf.open(pdf_reemplazado) as pdf2:
+        xobj = pdf2.pages[0].Resources.XObject[nombre_xobj]
+        assert int(xobj.Width) == 50
+        assert int(xobj.Height) == 50
+
+

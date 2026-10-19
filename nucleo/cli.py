@@ -568,6 +568,102 @@ def cmd_check(args) -> int:
     return EXITO
 
 
+def cmd_compact(args) -> int:
+    from .guardar import compactar_pdf
+    ruta = Path(args.archivo)
+    if not ruta.exists():
+        print(f"error: {ruta} no existe")
+        return ERROR
+    salida = Path(args.salida) if args.salida else ruta.with_name(ruta.stem + "-compactado.pdf")
+    try:
+        res = compactar_pdf(ruta, salida)
+    except Exception as e:
+        print(f"error al compactar {ruta}: {e}")
+        return ERROR
+    print(f"\n  Compactación y purga completada: {salida}")
+    print(f"      original:    {res.bytes_original:,} bytes")
+    print(f"      compactado:  {res.bytes_salida:,} bytes")
+    pct = (res.bytes_ahorrados / res.bytes_original * 100) if res.bytes_original else 0
+    print(f"      ahorro:      {res.bytes_ahorrados:,} bytes ({pct:.1f} %)")
+    print(f"      páginas:     {res.paginas}")
+    print("      historial de revisiones previas purgado (redacción segura)\n")
+    return EXITO
+
+
+def cmd_decrypt(args) -> int:
+    from .guardar import descifrar_pdf
+    ruta = Path(args.archivo)
+    if not ruta.exists():
+        print(f"error: {ruta} no existe")
+        return ERROR
+    salida = Path(args.salida) if args.salida else ruta.with_name(ruta.stem + "-descifrado.pdf")
+    try:
+        descifrar_pdf(ruta, salida, password=args.password or "")
+        print(f"\n  Documento descifrado correctamente: {salida}")
+        print("  Ya puede editarse con intactpdf o intactpdf-gui sin restricciones de cifrado.\n")
+        return EXITO
+    except Exception as e:
+        print(f"\n  error al descifrar {ruta.name}: {e}")
+        if not args.password:
+            print("  (si requiere contraseña, pásala con -p / --password)\n")
+        return ERROR
+
+
+def cmd_rotate(args) -> int:
+    from .guardar import rotar_pagina
+    ruta = Path(args.archivo)
+    if not ruta.exists():
+        print(f"error: {ruta} no existe")
+        return ERROR
+    salida = ruta if args.in_place else (Path(args.salida) if args.salida else ruta.with_name(ruta.stem + "-rotado.pdf"))
+    try:
+        inf = rotar_pagina(ruta, salida, args.pagina, args.angulo, crear_backup=args.in_place)
+        print(f"\n  Página {args.pagina + 1} rotada {args.angulo}° en {salida.name}")
+        print(f"  {inf.bytes_anadidos:,} bytes añadidos de forma incremental (prefijo intacto: {inf.prefijo_intacto})\n")
+        return EXITO
+    except Exception as e:
+        print(f"\n  error al rotar {ruta.name}: {e}\n")
+        return ERROR
+
+
+def cmd_extract_image(args) -> int:
+    from .guardar import extraer_imagen
+    ruta = Path(args.archivo)
+    if not ruta.exists():
+        print(f"error: {ruta} no existe")
+        return ERROR
+    salida = Path(args.salida) if args.salida else Path(f"{args.xobject.lstrip('/')}.png")
+    try:
+        extraer_imagen(ruta, args.pagina, args.xobject, salida)
+        print(f"\n  Imagen {args.xobject} extraída a {salida}\n")
+        return EXITO
+    except Exception as e:
+        print(f"\n  error al extraer imagen: {e}\n")
+        return ERROR
+
+
+def cmd_replace_image(args) -> int:
+    from .guardar import reemplazar_imagen
+    ruta = Path(args.archivo)
+    if not ruta.exists():
+        print(f"error: {ruta} no existe")
+        return ERROR
+    img = Path(args.imagen)
+    if not img.exists():
+        print(f"error: la imagen {img} no existe")
+        return ERROR
+    salida = ruta if args.in_place else (Path(args.salida) if args.salida else ruta.with_name(ruta.stem + "-editado.pdf"))
+    try:
+        inf = reemplazar_imagen(ruta, salida, args.pagina, args.xobject, img, crear_backup=args.in_place)
+        print(f"\n  Imagen {args.xobject} reemplazada con {img.name} en {salida.name}")
+        print(f"  {inf.bytes_anadidos:,} bytes añadidos de forma incremental (prefijo intacto: {inf.prefijo_intacto})\n")
+        return EXITO
+    except Exception as e:
+        print(f"\n  error al reemplazar imagen: {e}\n")
+        return ERROR
+
+
+
 # ---------------------------------------------------------------------------
 # Argumentos
 # ---------------------------------------------------------------------------
@@ -595,6 +691,41 @@ def construir_parser() -> argparse.ArgumentParser:
         p.add_argument("archivo")
         p.add_argument("--json", action="store_true")
         p.set_defaults(func=fn)
+
+    p = sub.add_parser("compact", help="eliminar historial previo y compactar (redacción segura)")
+    p.add_argument("archivo")
+    p.add_argument("-o", "--salida", help="fichero de salida")
+    p.set_defaults(func=cmd_compact)
+
+    p = sub.add_parser("decrypt", help="descifrar un PDF para permitir su edición")
+    p.add_argument("archivo")
+    p.add_argument("-p", "--password", default="", help="contraseña del PDF (si la tiene)")
+    p.add_argument("-o", "--salida", help="fichero de salida")
+    p.set_defaults(func=cmd_decrypt)
+
+    p = sub.add_parser("rotate", help="rotar una página (90, 180, 270 grados)")
+    p.add_argument("archivo")
+    p.add_argument("--angulo", type=int, choices=[90, 180, 270], default=90, help="grados de rotación")
+    p.add_argument("--pagina", type=int, default=0, help="0 = primera página")
+    p.add_argument("-o", "--salida", help="fichero de salida")
+    p.add_argument("--in-place", action="store_true", help="sobrescribir el original con backup .pdf~")
+    p.set_defaults(func=cmd_rotate)
+
+    p = sub.add_parser("extract-image", help="extraer una imagen a fichero PNG o JPEG")
+    p.add_argument("archivo")
+    p.add_argument("--xobject", required=True, help="nombre del XObject (/Im1 o Im1)")
+    p.add_argument("--pagina", type=int, default=0, help="0 = primera página")
+    p.add_argument("-o", "--salida", help="ruta del archivo de imagen de salida (.png o .jpg)")
+    p.set_defaults(func=cmd_extract_image)
+
+    p = sub.add_parser("replace-image", help="reemplazar una imagen por otra conservando posición")
+    p.add_argument("archivo")
+    p.add_argument("--xobject", required=True, help="nombre del XObject a sustituir (/Im1 o Im1)")
+    p.add_argument("--imagen", required=True, help="ruta a la nueva imagen (PNG/JPG)")
+    p.add_argument("--pagina", type=int, default=0, help="0 = primera página")
+    p.add_argument("-o", "--salida", help="fichero de salida")
+    p.add_argument("--in-place", action="store_true", help="sobrescribir el original con backup .pdf~")
+    p.set_defaults(func=cmd_replace_image)
 
     p = sub.add_parser("list", help="objetos de una página, con índice")
     p.add_argument("archivo")
