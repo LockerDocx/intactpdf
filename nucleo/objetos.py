@@ -212,6 +212,30 @@ class Sombreado:
 Objeto = TextoRun | Imagen | Vector | Sombreado
 
 
+def _dist_punto_a_segmento(px: float, py: float, x1: float, y1: float, x2: float, y2: float) -> float:
+    import math
+    dx, dy = x2 - x1, y2 - y1
+    if dx == 0 and dy == 0:
+        return math.hypot(px - x1, py - y1)
+    t = max(0.0, min(1.0, ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)))
+    proj_x = x1 + t * dx
+    proj_y = y1 + t * dy
+    return math.hypot(px - proj_x, py - proj_y)
+
+
+def _cerca_del_trazado(vector: Vector, x: float, y: float, tolerancia: float) -> bool:
+    pts = vector.puntos
+    if not pts or len(pts) < 2:
+        return True
+    umbral = tolerancia + max(vector.ancho_linea * 0.6, 2.0)
+    for i in range(len(pts) - 1):
+        if _dist_punto_a_segmento(x, y, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]) <= umbral:
+            return True
+    if len(pts) > 2 and _dist_punto_a_segmento(x, y, pts[-1][0], pts[-1][1], pts[0][0], pts[0][1]) <= umbral:
+        return True
+    return False
+
+
 @dataclass
 class ContenidoPagina:
     objetos: list[Objeto]
@@ -223,12 +247,11 @@ class ContenidoPagina:
 
     def en_punto(self, x: float, y: float, tolerancia: float = 2.0,
                  respetar_clip: bool = True) -> list[Objeto]:
-        """Objetos cuya caja contiene el punto. Ordenados del más pequeño
-        (más específico) al más grande.
+        """Objetos cuya caja contiene el punto. Ordenados del más específico
+        (texto/imágenes de menor área) a los contenedores más generales (fondos).
 
-        Con `respetar_clip` (por omisión) un objeto recortado no se selecciona
-        fuera de su recorte: un clic en la esquina de un degradado circular no
-        debe coger un rectángulo que visualmente no está ahí.
+        Para vectores de trazo sin relleno, comprueba que el clic esté cerca del
+        trazo real y no en el centro hueco.
         """
         out = []
         for o in self.objetos:
@@ -236,8 +259,22 @@ class ContenidoPagina:
                 continue
             if respetar_clip and not _dentro_del_clip(o, x, y):
                 continue
+            if isinstance(o, Vector) and o.tiene_trazo and not o.color_relleno:
+                if not _cerca_del_trazado(o, x, y, tolerancia):
+                    continue
             out.append(o)
-        out.sort(key=lambda o: (o.caja.area() if o.caja else 0.0))
+
+        def _prioridad(obj: Objeto) -> tuple[int, float]:
+            area = obj.caja.area() if obj.caja else 0.0
+            if obj.tipo == "texto":
+                return (0, area)
+            elif obj.tipo == "imagen":
+                return (1, area)
+            elif isinstance(obj, Vector) and area > 80000:
+                return (3, area)
+            return (2, area)
+
+        out.sort(key=_prioridad)
         return out
 
     def resumen(self) -> dict[str, int]:

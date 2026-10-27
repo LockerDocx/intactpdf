@@ -84,6 +84,8 @@ class Sesion:
         self.objetos_nuevos.clear()
         self.tiene_firma = False
         self.version += 1
+        self._candidatos.clear()
+        self._ultimo_punto = None
         self._recargar()
         self.seleccion = None
         self.ultimo_mensaje = ""
@@ -147,6 +149,8 @@ class Sesion:
             return
         self.num_pagina = max(0, n)
         self.version += 1
+        self._candidatos.clear()
+        self._ultimo_punto = None
         self._recargar()
         self.seleccion = None
 
@@ -173,22 +177,16 @@ class Sesion:
                        tolerancia: float = 2.0) -> Objeto | None:
         """El objeto que hay en ese punto, en coordenadas del PDF.
 
-        El hit-test es el del núcleo, y no una caja a ojo: `en_punto` descarta
-        los Bézier que salen de su caja envolvente y respeta los recortes, así
-        que pinchar en la esquina de un degradado circular no coge un
-        rectángulo que visualmente no está ahí.
-
-        `en_punto` devuelve los candidatos del más pequeño al más grande. Se
-        coge el más pequeño, que es lo que espera cualquiera: si hay una
-        etiqueta encima de una foto, se quiere la etiqueta. Y si se vuelve a
-        pinchar exactamente en el mismo sitio, se pasa al siguiente candidato,
-        que es la forma de llegar a lo que hay debajo sin tener que buscarlo.
+        Cicla entre los candidatos superpuestos si se vuelve a pinchar en la
+        misma zona (tolerancia de 5 pt para absorber pequeños movimientos del ratón).
         """
         if not self.contenido:
             return None
+        tol_sitio = max(5.0, tolerancia * 2.0)
         mismo_sitio = (self._ultimo_punto is not None
-                       and abs(self._ultimo_punto[0] - x) < 1.0
-                       and abs(self._ultimo_punto[1] - y) < 1.0)
+                       and abs(self._ultimo_punto[0] - x) < tol_sitio
+                       and abs(self._ultimo_punto[1] - y) < tol_sitio
+                       and bool(self._candidatos))
         if not mismo_sitio:
             self._candidatos = self.contenido.en_punto(x, y, tolerancia)
             self._ultimo_punto = (x, y)
@@ -219,6 +217,9 @@ class Sesion:
         self.version += 1
         self.ultimo_mensaje = mensaje
         self.ultimo_aviso = ""
+        self.seleccion = None
+        self._candidatos.clear()
+        self._ultimo_punto = None
         self._recargar_manteniendo_datos()
         return True
 
@@ -342,6 +343,8 @@ class Sesion:
         self.objetos_nuevos = paso.objetos_nuevos
         self.num_pagina = paso.num_pagina
         self.seleccion = None
+        self._candidatos.clear()
+        self._ultimo_punto = None
         self.version += 1
         self._recargar_manteniendo_datos()
         self.ultimo_mensaje = f"Deshecho: {paso.descripcion}"
@@ -358,6 +361,8 @@ class Sesion:
         self.objetos_nuevos = paso.objetos_nuevos
         self.num_pagina = paso.num_pagina
         self.seleccion = None
+        self._candidatos.clear()
+        self._ultimo_punto = None
         self.version += 1
         self._recargar_manteniendo_datos()
         self.ultimo_mensaje = f"Rehecho: {paso.descripcion}"

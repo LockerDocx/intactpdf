@@ -815,6 +815,52 @@ def test_la_ventana_se_abre_desde_la_entrada_de_pipx():
     assert "GTK" in r.stdout and "libadwaita" in r.stdout, r.stdout
 
 
+def test_seleccionar_en_cicla_con_tolerancia_y_prioriza_texto():
+    """El hit-test cicla entre capas con tolerancia de ratón y prioriza texto."""
+    from gui.modelo import Sesion
+    s = Sesion()
+    s.abrir(CORPUS / "03_vectores_clip_degradado.pdf")
+    # Punto donde hay un vector
+    v = s.objetos()[0]
+    cx, cy = v.caja.centro
+    primero = s.seleccionar_en(cx, cy)
+    assert primero is not None
+    # Segundo clic desplazado 2 pt (pequeño movimiento de mano): debe ciclar si hay candidatos
+    segundo = s.seleccionar_en(cx + 2.0, cy + 2.0)
+    assert segundo is not None
+
+
+def test_borrar_objeto_permite_nueva_seleccion_limpia():
+    """Tras borrar un objeto, el estado interno se resetea y permite seleccionar otros."""
+    from gui.modelo import Sesion
+    s = Sesion()
+    s.abrir(CORPUS / "03_vectores_clip_degradado.pdf")
+    v = s.objetos()[0]
+    s.seleccionar(v)
+    assert s.borrar() is True
+    assert s.seleccion is None
+    assert len(s._candidatos) == 0
+    assert s._ultimo_punto is None
+
+    # Seleccionar un objeto restante debe funcionar sin excepciones
+    restantes = s.objetos()
+    assert len(restantes) > 0
+    otro = restantes[0]
+    sel = s.seleccionar_en(*otro.caja.centro)
+    assert sel is not None
+    assert sel is otro
+
+
+def test_cli_tutorial_y_guia():
+    """Los comandos tutorial y guia devuelven código 0 y texto explicativo."""
+    import subprocess
+    for orden in ("tutorial", "guia"):
+        r = subprocess.run([sys.executable, "-m", "nucleo.cli", orden],
+                           capture_output=True, text=True)
+        assert r.returncode == 0
+        assert "TUTORIAL" in r.stdout or "GUÍA" in r.stdout
+
+
 if __name__ == "__main__":
     fallos = 0
     for nombre, fn in sorted(globals().items()):

@@ -315,10 +315,57 @@ class Ventana(Adw.ApplicationWindow):
 
         self.vacio = Adw.StatusPage()
         self.vacio.set_icon_name("x-office-document-symbolic")
-        self.vacio.set_title("Ningún documento abierto")
+        self.vacio.set_title("Bienvenido a IntactPDF")
         self.vacio.set_description(
-            "Abre un PDF para ver y editar lo que hay dentro: texto, imágenes y "
-            "vectores. También puedes arrastrarlo hasta esta ventana.")
+            "Modifica texto, imágenes y figuras de tus documentos PDF preservando el 100% del archivo original.")
+
+        # Controles y guía rápida de bienvenida
+        caja_vacio = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        caja_vacio.set_halign(Gtk.Align.CENTER)
+        caja_vacio.set_margin_top(12)
+
+        caja_botones = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        caja_botones.set_halign(Gtk.Align.CENTER)
+
+        btn_abrir = Gtk.Button.new_with_label("Abrir archivo PDF")
+        btn_abrir.add_css_class("suggested-action")
+        btn_abrir.add_css_class("pill")
+        btn_abrir.set_icon_name("document-open-symbolic")
+        btn_abrir.connect("clicked", lambda *_: self.accion_abrir())
+        caja_botones.append(btn_abrir)
+
+        btn_tut = Gtk.Button.new_with_label("Guía Rápida / Tutorial")
+        btn_tut.add_css_class("pill")
+        btn_tut.set_icon_name("help-faq-symbolic")
+        btn_tut.connect("clicked", lambda *_: self.mostrar_tutorial())
+        caja_botones.append(btn_tut)
+
+        caja_vacio.append(caja_botones)
+
+        grupo_pasos = Adw.PreferencesGroup()
+        grupo_pasos.set_title("Cómo usar IntactPDF en 3 sencillos pasos")
+        grupo_pasos.set_margin_top(16)
+
+        row1 = Adw.ActionRow()
+        row1.set_title("1. Abre o arrastra tu PDF")
+        row1.set_subtitle("Arrastra cualquier documento aquí o pulsa «Abrir archivo PDF».")
+        row1.add_prefix(Gtk.Image.new_from_icon_name("document-open-symbolic"))
+        grupo_pasos.add(row1)
+
+        row2 = Adw.ActionRow()
+        row2.set_title("2. Selecciona lo que quieras cambiar")
+        row2.set_subtitle("Haz clic sobre una palabra o foto en la página (o elígela en la lista de la izquierda).")
+        row2.add_prefix(Gtk.Image.new_from_icon_name("edit-find-symbolic"))
+        grupo_pasos.add(row2)
+
+        row3 = Adw.ActionRow()
+        row3.set_title("3. Edita con total tranquilidad")
+        row3.set_subtitle("Doble clic para editar texto o arrastra para mover. Deshacer siempre a mano con Ctrl+Z.")
+        row3.add_prefix(Gtk.Image.new_from_icon_name("security-high-symbolic"))
+        grupo_pasos.add(row3)
+
+        caja_vacio.append(grupo_pasos)
+        self.vacio.set_child(caja_vacio)
 
         self.pila = Gtk.Stack()
         self.pila.add_named(self.vacio, "vacio")
@@ -401,10 +448,18 @@ class Ventana(Adw.ApplicationWindow):
         menu = Gio.Menu()
         menu.append("Abrir un PDF…", "app.abrir")
         menu.append("Guardar como…", "app.guardar")
+        menu.append("Guía rápida y tutorial", "app.tutorial")
         menu.append("Comprobar el documento", "app.check")
         menu.append("Fuentes del documento", "app.fonts")
         menu.append("Ver el diagnóstico del entorno", "app.doctor")
         menu.append("Acerca de IntactPDF", "app.acerca")
+
+        b_ayuda = Gtk.Button()
+        b_ayuda.set_icon_name("help-about-symbolic")
+        b_ayuda.set_tooltip_text("Guía rápida y tutorial interactivo")
+        b_ayuda.connect("clicked", lambda *_: self.mostrar_tutorial())
+        barra.pack_end(b_ayuda)
+
         b_menu = Gtk.MenuButton()
         b_menu.set_icon_name("open-menu-symbolic")
         b_menu.set_menu_model(menu)
@@ -573,11 +628,10 @@ class Ventana(Adw.ApplicationWindow):
                      self.dialogo_texto)
         cinta.vigilar(b, lambda s: bool(s.seleccion and s.seleccion.tipo == "texto"))
         self.sw_ajustar = Gtk.CheckButton(label="Ajustar el espaciado")
-        self.sw_ajustar.set_active(True)
+        self.sw_ajustar.set_active(False)
         self.sw_ajustar.set_tooltip_text(
-            "Reparte la diferencia con el espaciado entre caracteres para que "
-            "el texto nuevo ocupe el mismo ancho que el viejo, sin tocar el "
-            "resto de la línea")
+            "Desactivado por omisión para mantener la tipografía natural. "
+            "Actívalo solo si deseas forzar que el texto ocupe exactamente el ancho previo.")
         g.meter(self.sw_ajustar)
         cinta.vigilar(self.sw_ajustar,
                       lambda s: bool(s.seleccion and s.seleccion.tipo == "texto"))
@@ -1090,6 +1144,8 @@ class Ventana(Adw.ApplicationWindow):
 
     def accion_borrar(self):
         if self.sesion.borrar():
+            self._doc = None
+            self._geo = None
             self.actualizar()
             self.lienzo.queue_draw()
 
@@ -1278,17 +1334,28 @@ class Ventana(Adw.ApplicationWindow):
             return
         escala = s.escala_de_run(obj)
         tam = getattr(obj, "fuente_tam", 0.0)
+
+        caja_dialogo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        caja_dialogo.set_margin_top(6)
+
         entrada = Gtk.Entry()
         entrada.set_text(obj.texto or "")
         entrada.set_hexpand(True)
-        entrada.set_margin_top(8)
+        caja_dialogo.append(entrada)
+
+        chk_ajustar = Gtk.CheckButton(label="Ajustar espaciado al ancho original (Tc)")
+        chk_ajustar.set_active(self.sw_ajustar.get_active())
+        chk_ajustar.set_tooltip_text(
+            "Desactivado por omisión para mantener la tipografía natural de la fuente sin deformar las letras.")
+        caja_dialogo.append(chk_ajustar)
 
         def cambiar():
             nuevo = entrada.get_text()
             if nuevo == (obj.texto or ""):
                 return
-            if not s.editar_texto(nuevo,
-                                  ajustar_espaciado=self.sw_ajustar.get_active()):
+            ajustar = chk_ajustar.get_active()
+            self.sw_ajustar.set_active(ajustar)
+            if not s.editar_texto(nuevo, ajustar_espaciado=ajustar):
                 self.error("No se puede cambiar ese texto",
                            s.ultimo_aviso or "el núcleo no ha dado un motivo")
             else:
@@ -1300,7 +1367,117 @@ class Ventana(Adw.ApplicationWindow):
             (f"Fuente: {obj.fuente_base or '—'}   ·   "
              f"tamaño en el texto: {tam:.1f} pt   ·   "
              f"en la página: {tam * escala:.1f} pt"),
-            "Cambiar", cambiar, extra=entrada, padre=self)
+            "Cambiar", cambiar, extra=caja_dialogo, padre=self)
+
+    def mostrar_tutorial(self):
+        """Muestra una guía visual interactiva y didáctica de uso."""
+        dlg = Adw.PreferencesWindow()
+        dlg.set_transient_for(self)
+        dlg.set_modal(True)
+        dlg.set_title("Guía y Tutorial de IntactPDF")
+        dlg.set_default_size(580, 480)
+
+        # Página 1: Primeros Pasos
+        pag1 = Adw.PreferencesPage()
+        pag1.set_title("Primeros Pasos")
+        pag1.set_icon_name("help-faq-symbolic")
+
+        grp_basico = Adw.PreferencesGroup()
+        grp_basico.set_title("Cómo editar tu PDF de forma segura")
+        grp_basico.set_description(
+            "IntactPDF solo modifica exactamente lo que seleccionas. El resto del archivo "
+            "se conserva 100% idéntico mediante guardado incremental ISO 32000.")
+
+        row_sel = Adw.ActionRow()
+        row_sel.set_title("Selección fácil")
+        row_sel.set_subtitle(
+            "Haz clic sobre cualquier palabra, imagen o forma. "
+            "Si hay elementos superpuestos, vuelve a hacer clic en el mismo punto para ciclar entre ellos.")
+        row_sel.add_prefix(Gtk.Image.new_from_icon_name("input-mouse-symbolic"))
+        grp_basico.add(row_sel)
+
+        row_txt = Adw.ActionRow()
+        row_txt.set_title("Edición de texto natural")
+        row_txt.set_subtitle(
+            "Haz doble clic en una palabra o pulsa Ctrl+E. Escribe el texto nuevo; "
+            "la tipografía se conserva de forma natural sin distorsionar el espaciado.")
+        row_txt.add_prefix(Gtk.Image.new_from_icon_name("insert-text-symbolic"))
+        grp_basico.add(row_txt)
+
+        row_mov = Adw.ActionRow()
+        row_mov.set_title("Mover y transformar")
+        row_mov.set_subtitle(
+            "Arrastra con el ratón para desplazar un objeto, o usa la pestaña «Objeto» "
+            "para moverlo por puntos exactos (pt) o escalarlo.")
+        row_mov.add_prefix(Gtk.Image.new_from_icon_name("transform-move-symbolic"))
+        grp_basico.add(row_mov)
+
+        pag1.add(grp_basico)
+        dlg.add(pag1)
+
+        # Página 2: Imágenes y Páginas
+        pag2 = Adw.PreferencesPage()
+        pag2.set_title("Imágenes y Páginas")
+        pag2.set_icon_name("image-x-generic-symbolic")
+
+        grp_img = Adw.PreferencesGroup()
+        grp_img.set_title("Gestión de logotipos e ilustraciones")
+
+        row_rep = Adw.ActionRow()
+        row_rep.set_title("Sustituir una imagen")
+        row_rep.set_subtitle(
+            "Selecciona la imagen y pulsa «Reemplazar» en la cinta Objeto. La nueva foto o logotipo "
+            "encajará en las coordenadas y tamaño exactos del original, preservando transparencias.")
+        row_rep.add_prefix(Gtk.Image.new_from_icon_name("document-revert-symbolic"))
+        grp_img.add(row_rep)
+
+        row_ext = Adw.ActionRow()
+        row_ext.set_title("Extraer imágenes a disco")
+        row_ext.set_subtitle(
+            "Pulsa «Extraer» para guardar cualquier imagen del PDF en formato PNG o JPG nativo.")
+        row_ext.add_prefix(Gtk.Image.new_from_icon_name("document-save-symbolic"))
+        grp_img.add(row_ext)
+
+        row_rot = Adw.ActionRow()
+        row_rot.set_title("Girar páginas")
+        row_rot.set_subtitle(
+            "En la pestaña «Página», usa los botones de 90°, 180° o 270° para reorientar cualquier página al instante.")
+        row_rot.add_prefix(Gtk.Image.new_from_icon_name("object-rotate-right-symbolic"))
+        grp_img.add(row_rot)
+
+        pag2.add(grp_img)
+        dlg.add(pag2)
+
+        # Página 3: Atajos de teclado
+        pag3 = Adw.PreferencesPage()
+        pag3.set_title("Atajos")
+        pag3.set_icon_name("preferences-desktop-keyboard-shortcuts-symbolic")
+
+        grp_atajos = Adw.PreferencesGroup()
+        grp_atajos.set_title("Atajos rápidos de teclado")
+
+        for atajo, desc in (
+            ("Ctrl + O", "Abrir un archivo PDF"),
+            ("Ctrl + S", "Guardar sobre el archivo original (con respaldo .pdf~)"),
+            ("Ctrl + Mayús + S", "Guardar como copia en otro archivo"),
+            ("Ctrl + E", "Editar el texto del objeto seleccionado"),
+            ("Ctrl + Z", "Deshacer el último cambio"),
+            ("Ctrl + Mayús + Z / Ctrl + Y", "Rehacer el cambio"),
+            ("Ctrl + C", "Copiar el texto seleccionado al portapapeles"),
+            ("Ctrl + Rueda del ratón", "Zoom continuo centrado"),
+            ("Ctrl + +, Ctrl + -, Ctrl + 0", "Aumentar, reducir o ajustar zoom"),
+            ("Supr / Delete", "Borrar el objeto seleccionado"),
+            ("Doble clic", "Editar texto o escalar objeto"),
+        ):
+            r = Adw.ActionRow()
+            r.set_title(desc)
+            r.add_suffix(Gtk.Label(label=atajo, css_classes=["dim-label", "monospace"]))
+            grp_atajos.add(r)
+
+        pag3.add(grp_atajos)
+        dlg.add(pag3)
+
+        dlg.present()
 
     def dialogo_escalar(self):
         s = self.sesion

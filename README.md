@@ -108,6 +108,7 @@ IntactPDF incluye una interfaz de terminal pensada para automatización y entorn
 
 ```bash
 # Inspección y diagnóstico
+intactpdf tutorial                                         # Guía interactiva paso a paso
 intactpdf doctor                                           # Comprobar dependencias y entorno
 intactpdf info documento.pdf                               # Metadatos, revisiones y firmas
 intactpdf list documento.pdf --pagina 0                    # Listar objetos y coordenadas
@@ -147,7 +148,7 @@ python3 tools/test_aceptacion.py
 ```
 
 Resultados de la suite:
-- 120 pruebas unitarias aprobadas (0 fallos, 4 omitidas correspondientes a artefactos de empaquetado release).
+- 123 pruebas unitarias aprobadas (0 fallos, 4 omitidas correspondientes a artefactos de empaquetado release).
 - 19 de 19 casos de aceptación visual superados: 0 píxeles alterados fuera del área seleccionada.
 - Verificación de prefijo binario idéntico en las 19 operaciones del corpus de control.
 
