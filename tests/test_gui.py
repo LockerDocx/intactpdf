@@ -383,14 +383,13 @@ def test_la_ventana_se_construye_y_se_dibuja():
         return
 
     destino = SALIDA_CAPTURAS / "02-seleccion.png"
-    antes = destino.stat().st_mtime_ns if destino.exists() else 0
+    destino.unlink(missing_ok=True)
     r = subprocess.run([sys.executable, str(RAIZ / "tools/capturas_gui.py"),
                         "--solo=02-seleccion"],
                        capture_output=True, text=True, timeout=180, cwd=str(RAIZ))
     if r.returncode != 0:
         raise AssertionError(f"la captura falló: {r.stdout[-300:]}{r.stderr[-300:]}")
     assert destino.exists(), "no se generó la captura"
-    assert destino.stat().st_mtime_ns != antes, "la captura es la de antes"
 
     datos = destino.read_bytes()
     assert len(datos) > 10_000, f"la captura es sospechosamente pequeña: {len(datos)} B"
@@ -876,6 +875,51 @@ def test_lienzo_transformacion_pixel_pdf_exacta_con_zoom():
             rec_x, rec_y = lienzo.a_pdf(px, py)
             assert abs(rec_x - x_pdf) < 1e-3, f"Fallo en X con zoom {zoom}: {rec_x} != {x_pdf}"
             assert abs(rec_y - y_pdf) < 1e-3, f"Fallo en Y con zoom {zoom}: {rec_y} != {y_pdf}"
+
+
+def test_i18n_cambio_de_idioma_en_ventana():
+    """La ventana conmuta correctamente de idioma en caliente (es, en, de, zh)."""
+    if not _hay_gtk():
+        return
+    from nucleo.i18n import fijar_idioma, idioma_actual, t
+    s, v = _ventana_con()
+    
+    # Probar inglés
+    v.cambiar_idioma("en")
+    assert idioma_actual() == "en"
+    assert "Welcome" in v.vacio.get_title()
+    assert v.cinta.pagina_activa() == "inicio"
+
+    # Probar alemán
+    v.cambiar_idioma("de")
+    assert idioma_actual() == "de"
+    assert "Willkommen" in v.vacio.get_title()
+
+    # Probar chino
+    v.cambiar_idioma("zh")
+    assert idioma_actual() == "zh"
+    assert "欢迎" in v.vacio.get_title()
+
+    # Restaurar español
+    v.cambiar_idioma("es")
+    assert idioma_actual() == "es"
+    assert "Bienvenido" in v.vacio.get_title()
+
+
+def test_i18n_tutorial_cli_todos_los_idiomas():
+    """El tutorial por CLI se imprime correctamente en es, en, de y zh."""
+    import subprocess
+    esperados = {
+        "es": "TUTORIAL Y GUÍA RÁPIDA",
+        "en": "QUICK GUIDE & TUTORIAL",
+        "de": "KURZANLEITUNG & TUTORIAL",
+        "zh": "快速使用指南与教程",
+    }
+    for lang, frase in esperados.items():
+        r = subprocess.run([sys.executable, "-m", "nucleo.cli", "tutorial", "--lang", lang],
+                           capture_output=True, text=True)
+        assert r.returncode == 0
+        assert frase in r.stdout, f"No se encontró '{frase}' en salida para lang={lang}"
 
 
 if __name__ == "__main__":

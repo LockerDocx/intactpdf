@@ -663,47 +663,12 @@ def cmd_replace_image(args) -> int:
         return ERROR
 
 
+from nucleo.i18n import fijar_idioma, tutorial_cli
+
+
 def cmd_tutorial(args) -> int:
-    print("""
-================================================================================
-                    TUTORIAL Y GUÍA RÁPIDA DE INTACTPDF
-================================================================================
-
-IntactPDF modifica objetos existentes (textos, imágenes, formas) sin reconstruir
-el resto del documento. El archivo de salida conserva el 100% de los bytes
-originales al inicio mediante actualización incremental estándar (ISO 32000-1).
-
-1. INTERFAZ GRÁFICA (Recomendada para uso visual):
-   Para abrir la ventana con previsualización, selección con ratón y cinta:
-     $ intactpdf-gui
-     $ intactpdf-gui documento.pdf
-
-2. CONSULTAR QUÉ CONTIENE UNA PÁGINA:
-   Para listar todos los objetos con su índice, tipo y coordenadas:
-     $ intactpdf list documento.pdf --pagina 0
-
-3. EDITAR TEXTO LOCALIZADO:
-   Para modificar el texto del objeto #2 sin alterar la tipografía del resto:
-     $ intactpdf edit documento.pdf --object 2 --text "Nuevo texto" -o salida.pdf
-   Para sobrescribir sobre el original creando respaldo automático (.pdf~):
-     $ intactpdf edit documento.pdf --object 2 --text "Nuevo texto" --in-place
-
-4. SUSTITUIR O EXTRAER IMÁGENES:
-   Para cambiar un logotipo manteniendo la posición y escala exacta:
-     $ intactpdf replace-image doc.pdf --xobject Im1 --imagen nuevo_logo.png --in-place
-   Para extraer una imagen incrustada a disco en PNG o JPG:
-     $ intactpdf extract-image doc.pdf --xobject Im1 -o logo_extraido.png
-
-5. GIRAR PÁGINAS:
-   Para rotar 90 grados en el sentido de las agujas del reloj:
-     $ intactpdf rotate doc.pdf --pagina 0 --angulo 90 --in-place
-
-6. PURGAR HISTORIAL Y OBJETOS BORRADOS (Compactar):
-   Para eliminar revisiones anteriores y dejar un PDF limpio y optimizado:
-     $ intactpdf compact doc.pdf -o limpio.pdf
-
-================================================================================
-""")
+    lang = getattr(args, "lang", None) or getattr(args, "idioma", None)
+    print(tutorial_cli(lang))
     return EXITO
 
 
@@ -731,6 +696,8 @@ def construir_parser() -> argparse.ArgumentParser:
 
     for nombre in ("tutorial", "guia"):
         p = sub.add_parser(nombre, help="tutorial y guía paso a paso de uso de IntactPDF")
+        p.add_argument("--lang", "--idioma", choices=["es", "en", "de", "zh"],
+                       help="idioma del tutorial / tutorial language (es, en, de, zh)")
         p.set_defaults(func=cmd_tutorial)
 
     for nombre, fn, ayuda in (("info", cmd_info, "resumen del documento"),
