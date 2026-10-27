@@ -82,3 +82,6 @@ include-package-data = false
 # Si algún día se empaquetan fuentes con la aplicación (necesario dentro de un
 # Flatpak, donde no se ve /usr/share/fonts del anfitrión), van aquí.
 nucleo = ["fuentes/*.ttf", "fuentes/*.otf"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
