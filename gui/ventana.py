@@ -120,11 +120,11 @@ class Lienzo(Gtk.DrawingArea):
         m, _, _ = self._matriz()
         if m is None:
             return 0.0, 0.0
-        esc = (1.0 / self.zoom, 0, 0, 1.0 / self.zoom, 0, 0)
-        inv = invertir(multiplicar(m, esc))
+        inv = invertir(m)
         if inv is None:
             return 0.0, 0.0
-        return aplicar(inv, px, py)
+        z = max(self.zoom, 0.001)
+        return aplicar(inv, px / z, py / z)
 
     # -- superficie cacheada ---------------------------------------------
 
@@ -219,7 +219,8 @@ class Lienzo(Gtk.DrawingArea):
                 self.ventana.dialogo_escalar()
             return
         px, py = self.a_pdf(x, y)
-        sesion.seleccionar_en(px, py, tolerancia=2.0 / max(self.zoom, 0.01))
+        z = max(self.zoom, 0.01)
+        sesion.seleccionar_en(px, py, tolerancia=6.0 / z)
         self.ventana.actualizar()
         self.queue_draw()
 

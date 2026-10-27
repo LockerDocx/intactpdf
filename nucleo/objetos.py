@@ -760,6 +760,7 @@ def _caja_aproximada_texto(run: TextoRun) -> Caja | None:
     n = max(len(run.texto), 1)
     tam = run.fuente_tam or 12.0
     ancho_est = n * tam * 0.55
-    alto_est = tam * 1.2
-    pts = [aplicar(trm, x, y) for x in (0, ancho_est) for y in (0, alto_est)]
+    # En PDF el origen es la línea base (baseline); los glifos tienen trazo descendente
+    # (aprox. -0.25 em) y ascendente/mayúsculas (aprox. +0.95 em).
+    pts = [aplicar(trm, x, y) for x in (0, ancho_est) for y in (-tam * 0.25, tam * 0.95)]
     return Caja.de_puntos(pts)

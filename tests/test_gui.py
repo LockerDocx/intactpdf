@@ -861,6 +861,23 @@ def test_cli_tutorial_y_guia():
         assert "TUTORIAL" in r.stdout or "GUÍA" in r.stdout
 
 
+def test_lienzo_transformacion_pixel_pdf_exacta_con_zoom():
+    """a_pdf y a_pixel deben ser inversas matemáticas exactas a cualquier nivel de zoom."""
+    if not _hay_gtk():
+        return
+    s, v = _ventana_con("03_vectores_clip_degradado.pdf")
+    lienzo = v.lienzo
+
+    for zoom in (0.5, 1.0, 1.5, 2.0, 3.0):
+        lienzo.zoom = zoom
+        # Puntos de prueba variados en el PDF
+        for x_pdf, y_pdf in [(50.0, 50.0), (150.0, 400.0), (300.0, 750.0)]:
+            px, py = lienzo.a_pixel(x_pdf, y_pdf)
+            rec_x, rec_y = lienzo.a_pdf(px, py)
+            assert abs(rec_x - x_pdf) < 1e-3, f"Fallo en X con zoom {zoom}: {rec_x} != {x_pdf}"
+            assert abs(rec_y - y_pdf) < 1e-3, f"Fallo en Y con zoom {zoom}: {rec_y} != {y_pdf}"
+
+
 if __name__ == "__main__":
     fallos = 0
     for nombre, fn in sorted(globals().items()):
