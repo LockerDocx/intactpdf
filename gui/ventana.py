@@ -634,6 +634,10 @@ class Ventana(Adw.ApplicationWindow):
             cinta.vigilar(b, lambda s: s.seleccion is not None)
 
         g = objeto.grupo(t("grp_imagen"))
+        b = g.grande("image-x-generic-symbolic", t("btn_anadir_imagen"),
+                     t("btn_anadir_imagen_tip"),
+                     self.dialogo_anadir_imagen)
+        cinta.vigilar(b, lambda s: s.abierto)
         b = g.grande("document-save-symbolic", t("btn_extraer"),
                      t("btn_extraer_tip"),
                      self.accion_extraer_imagen)
@@ -660,6 +664,9 @@ class Ventana(Adw.ApplicationWindow):
         texto = cinta.pagina("texto", t("tab_texto"))
 
         g = texto.grupo(t("grp_edicion"))
+        b = g.grande("list-add-symbolic", t("btn_anadir_texto"),
+                     t("btn_anadir_texto_tip"), self.dialogo_anadir_texto)
+        cinta.vigilar(b, lambda s: s.abierto)
         b = g.grande("insert-text-symbolic", t("btn_editar_texto"),
                      t("btn_editar_texto_tip"),
                      self.dialogo_texto)
@@ -1358,6 +1365,92 @@ class Ventana(Adw.ApplicationWindow):
         self.lienzo.queue_draw()
 
     # -- diálogos ---------------------------------------------------------
+
+    def dialogo_anadir_texto(self):
+        """Diálogo interactivo para añadir una nueva línea de texto al documento."""
+        s = self.sesion
+        if not s.abierto:
+            return
+
+        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        caja.set_margin_top(6)
+
+        entrada = Gtk.Entry()
+        entrada.set_placeholder_text("Introduce el nuevo texto...")
+        entrada.set_hexpand(True)
+        caja.append(entrada)
+
+        fila_pos = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        lbl_x = Gtk.Label(label="X:")
+        spin_x = Gtk.SpinButton.new_with_range(0, 2000, 10)
+        spin_x.set_value(100.0)
+        lbl_y = Gtk.Label(label="Y:")
+        spin_y = Gtk.SpinButton.new_with_range(0, 2000, 10)
+        spin_y.set_value(500.0)
+        lbl_tam = Gtk.Label(label="Tamaño:")
+        spin_tam = Gtk.SpinButton.new_with_range(6, 120, 1)
+        spin_tam.set_value(12.0)
+
+        for w in (lbl_x, spin_x, lbl_y, spin_y, lbl_tam, spin_tam):
+            fila_pos.append(w)
+        caja.append(fila_pos)
+
+        def insertar():
+            txt = entrada.get_text()
+            if not txt.strip():
+                return
+            x = spin_x.get_value()
+            y = spin_y.get_value()
+            tam = spin_tam.get_value()
+            if not s.anadir_texto(txt, x=x, y=y, tamano=tam):
+                self.error("No se pudo añadir el texto", s.ultimo_aviso or "Error desconocido")
+            else:
+                self.actualizar()
+                self.lienzo.queue_draw()
+
+        dialogos.confirmacion(
+            t("btn_anadir_texto"),
+            "Inserta un nuevo bloque de texto con tipografía incrustada de forma incremental.",
+            t("btn_guardar"),
+            insertar,
+            extra=caja,
+            padre=self
+        )
+
+    def dialogo_anadir_imagen(self):
+        """Selector de archivos para añadir una nueva imagen al documento."""
+        s = self.sesion
+        if not s.abierto:
+            return
+
+        dlg = Gtk.FileDialog()
+        dlg.set_title(t("btn_anadir_imagen"))
+        filtro = Gtk.FileFilter()
+        filtro.set_name("Imágenes (PNG, JPG, JPEG, WEBP)")
+        filtro.add_mime_type("image/png")
+        filtro.add_mime_type("image/jpeg")
+        filtro.add_mime_type("image/webp")
+        filtros = Gio.ListStore.new(Gtk.FileFilter)
+        filtros.append(filtro)
+        dlg.set_filters(filtros)
+        dlg.set_default_filter(filtro)
+        dlg.open(self, None, self._anadir_imagen_abierta)
+
+    def _anadir_imagen_abierta(self, dlg, resultado):
+        try:
+            fichero = dlg.open_finish(resultado)
+        except Exception:
+            return
+        if not fichero:
+            return
+        ruta = Path(fichero.get_path())
+        s = self.sesion
+        # Insertar imagen en (100, 400) con tamaño estándar de 150x100 pt
+        if not s.anadir_imagen(ruta, x=100, y=400, ancho=150, alto=100):
+            self.error("No se pudo añadir la imagen", s.ultimo_aviso or "Error al procesar la imagen")
+        else:
+            self.actualizar()
+            self.lienzo.queue_draw()
 
     def dialogo_texto(self):
         s = self.sesion

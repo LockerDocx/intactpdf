@@ -663,6 +663,56 @@ def cmd_replace_image(args) -> int:
         return ERROR
 
 
+def cmd_add_text(args) -> int:
+    from .insertar import plan_anadir_texto
+    from .guardar import guardar_pagina_editada
+    ruta = Path(args.archivo)
+    if not ruta.exists():
+        print(f"error: {ruta} no existe")
+        return ERROR
+    salida = ruta if args.in_place else (Path(args.salida) if args.salida else ruta.with_name(ruta.stem + "-editado.pdf"))
+    try:
+        with pikepdf.open(str(ruta)) as pdf:
+            stream = bytes(pdf.pages[args.pagina].Contents.read_bytes())
+        plan = plan_anadir_texto(stream, ruta, args.pagina, args.texto, args.x, args.y,
+                                 tamano=args.tamano)
+        inf = guardar_pagina_editada(ruta, salida, args.pagina, [plan.nuevo_stream],
+                                     plan.objetos_extra, verificar=True, crear_backup=args.in_place)
+        print(f"\n  Texto añadido: '{args.texto}' en ({args.x}, {args.y}) en {salida.name}")
+        print(f"  {inf.bytes_anadidos:,} bytes añadidos de forma incremental (prefijo intacto: {inf.prefijo_intacto})\n")
+        return EXITO
+    except Exception as e:
+        print(f"\n  error al añadir texto: {e}\n")
+        return ERROR
+
+
+def cmd_add_image(args) -> int:
+    from .insertar import plan_anadir_imagen
+    from .guardar import guardar_pagina_editada
+    ruta = Path(args.archivo)
+    if not ruta.exists():
+        print(f"error: {ruta} no existe")
+        return ERROR
+    img = Path(args.imagen)
+    if not img.exists():
+        print(f"error: la imagen {img} no existe")
+        return ERROR
+    salida = ruta if args.in_place else (Path(args.salida) if args.salida else ruta.with_name(ruta.stem + "-editado.pdf"))
+    try:
+        with pikepdf.open(str(ruta)) as pdf:
+            stream = bytes(pdf.pages[args.pagina].Contents.read_bytes())
+        plan = plan_anadir_imagen(stream, ruta, args.pagina, img, args.x, args.y,
+                                  args.ancho, args.alto)
+        inf = guardar_pagina_editada(ruta, salida, args.pagina, [plan.nuevo_stream],
+                                     plan.objetos_extra, verificar=True, crear_backup=args.in_place)
+        print(f"\n  Imagen {img.name} añadida en ({args.x}, {args.y}) en {salida.name}")
+        print(f"  {inf.bytes_anadidos:,} bytes añadidos de forma incremental (prefijo intacto: {inf.prefijo_intacto})\n")
+        return EXITO
+    except Exception as e:
+        print(f"\n  error al añadir imagen: {e}\n")
+        return ERROR
+
+
 from nucleo.i18n import fijar_idioma, tutorial_cli
 
 
@@ -741,6 +791,29 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("-o", "--salida", help="fichero de salida")
     p.add_argument("--in-place", action="store_true", help="sobrescribir el original con backup .pdf~")
     p.set_defaults(func=cmd_replace_image)
+
+    p = sub.add_parser("add-text", help="añadir una nueva línea de texto de forma incremental")
+    p.add_argument("archivo")
+    p.add_argument("--texto", required=True, help="texto a insertar")
+    p.add_argument("--x", type=float, default=100.0, help="coordenada X (puntos PDF)")
+    p.add_argument("--y", type=float, default=500.0, help="coordenada Y (puntos PDF)")
+    p.add_argument("--tamano", type=float, default=12.0, help="tamaño en puntos")
+    p.add_argument("--pagina", type=int, default=0)
+    p.add_argument("-o", "--salida", help="fichero de salida")
+    p.add_argument("--in-place", action="store_true", help="sobrescribir el original")
+    p.set_defaults(func=cmd_add_text)
+
+    p = sub.add_parser("add-image", help="añadir una nueva imagen de forma incremental")
+    p.add_argument("archivo")
+    p.add_argument("--imagen", required=True, help="ruta a la imagen (PNG, JPG, etc.)")
+    p.add_argument("--x", type=float, default=100.0, help="coordenada X (puntos PDF)")
+    p.add_argument("--y", type=float, default=400.0, help="coordenada Y (puntos PDF)")
+    p.add_argument("--ancho", type=float, default=150.0, help="ancho en puntos PDF")
+    p.add_argument("--alto", type=float, default=100.0, help="alto en puntos PDF")
+    p.add_argument("--pagina", type=int, default=0)
+    p.add_argument("-o", "--salida", help="fichero de salida")
+    p.add_argument("--in-place", action="store_true", help="sobrescribir el original")
+    p.set_defaults(func=cmd_add_image)
 
     p = sub.add_parser("list", help="objetos de una página, con índice")
     p.add_argument("archivo")

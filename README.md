@@ -38,13 +38,15 @@ La interfaz gráfica utiliza GTK4 y Libadwaita, organizada mediante una cinta de
 
 ## Funcionalidades principales
 
-### Edición tipográfica de texto
+### Edición e inserción tipográfica
 - Sustitución directa de bytes cuando la longitud y la codificación coinciden con la original.
-- Compensación métrica de espaciado (`Tc`) para textos con ligeras variaciones de longitud, evitando desbordamientos de bloque.
-- Incrustación de subconjuntos de fuentes del sistema cuando el texto editado introduce nuevos glifos.
+- Segmentación tipográfica precisa de sub-bloques de texto: cuando dos palabras contiguas usan tipografías, fuentes o tamaños distintos dentro de un mismo bloque, se tratan como objetos independientes preservando intacta la fuente y métrica de cada una.
+- Inserción de nuevo texto (`add-text`): añade nuevas líneas de texto en coordenadas exactas incrustando subconjuntos limpios de fuentes del sistema de forma incremental.
+- Compensación métrica de espaciado (`Tc`) opcional para textos con variaciones de longitud, evitando desbordamientos de bloque.
 
-### Manipulación de imágenes
-- Sustitución de imagen (`replace-image`): reemplaza un XObject de imagen existente por un nuevo archivo (PNG, JPEG o WebP), conservando la posición, matriz de transformación y dimensiones del elemento original. Si la imagen incluye canal alfa (transparencia), genera automáticamente la máscara `/SMask` en escala de grises según la especificación ISO 32000.
+### Manipulación e inserción de imágenes
+- Inserción de nueva imagen (`add-image`): inserta una nueva imagen externa (PNG, JPEG, WebP) en coordenadas y dimensiones exactas con soporte de canal alfa y máscara `/SMask` ISO 32000.
+- Sustitución de imagen (`replace-image`): reemplaza un XObject de imagen existente por un nuevo archivo, conservando la posición, matriz de transformación y dimensiones del elemento original.
 - Extracción de imagen (`extract-image`): si la imagen está codificada como JPEG (`/DCTDecode`), extrae directamente el flujo binario original sin decodificar ni recomprimir; para el resto de formatos, exporta a PNG sin pérdidas.
 
 ### Transformaciones geométricas y estructura
@@ -113,6 +115,10 @@ intactpdf doctor                                           # Comprobar dependenc
 intactpdf info documento.pdf                               # Metadatos, revisiones y firmas
 intactpdf list documento.pdf --pagina 0                    # Listar objetos y coordenadas
 
+# Inserción de texto e imágenes
+intactpdf add-text doc.pdf --texto "Nota añadida" --x 100 --y 500 --tamano 14 -o salida.pdf
+intactpdf add-image doc.pdf --imagen firma.png --x 150 --y 200 --ancho 120 --alto 60 -o salida.pdf
+
 # Manipulación de imágenes
 intactpdf replace-image doc.pdf --xobject Im1 --imagen logo.png -o salida.pdf
 intactpdf extract-image doc.pdf --xobject Im1 -o logo_extraido.png
@@ -161,6 +167,14 @@ Resultados de la suite:
 - `tests/`: suite de pruebas automatizadas unitarias, de integración y fidelidad visual.
 - `tools/`: utilidades para generación del corpus, inspección de streams y benchmarks.
 
-## Licencia
+## Autoría y Licencia
 
-Distribuido bajo doble licencia MIT y Apache 2.0. Consulta los archivos `LICENSE-MIT` y `LICENSE-APACHE` para más detalles.
+**Autor y creador original:** [Gerard Morales](https://github.com/LockerDocx)  
+**Proyecto original oficial:** [https://github.com/LockerDocx/intactpdf](https://github.com/LockerDocx/intactpdf)
+
+Este software es código abierto distribuido bajo la licencia **GNU Affero General Public License v3.0 (AGPL-3.0-or-later)**. Consulta el archivo [LICENSE](LICENSE) para conocer el texto íntegro y oficial de la licencia.
+
+### Términos de uso y atribución:
+- Todo trabajo derivado, adaptación, despliegue o servicio de red que incorpore este código debe mantener de forma obligatoria y visible la atribución al autor original (**Gerard Morales**) y el enlace al repositorio oficial (**LockerDocx/intactpdf**).
+- El nombre del proyecto, marcas asociadas e identidad visual pertenecen a su autor original y no pueden ser utilizados con fines comerciales o de confusión pública sin autorización previa expresa.
+- Si utilizas o referencias este proyecto, enlaza siempre a la fuente oficial autorizada.

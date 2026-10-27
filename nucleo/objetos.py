@@ -550,6 +550,24 @@ def extraer_objetos(datos: bytes, fuentes: dict | None = None) -> ContenidoPagin
                 run = None
             continue
         if op == "Tf":
+            nueva_fuente = str(ins.operandos[0]) if len(ins.operandos) >= 1 else None
+            nuevo_tam = _num(ins.operandos[1]) if len(ins.operandos) >= 2 else estado.fuente_tam
+            # Si el run ya contenía texto pintado y cambia de fuente o tamaño, cerramos el run
+            # previo para que cada fragmento tipográfico sea un objeto independiente y preciso.
+            if run is not None and (run.texto or run.n_codigos) and (
+                (nueva_fuente is not None and nueva_fuente != run.fuente_nombre) or
+                (nuevo_tam != run.fuente_tam)
+            ):
+                objetos.append(run)
+                run = TextoRun(ctm=estado.ctm, tm_inicial=estado.tm,
+                               fuente_nombre=nueva_fuente,
+                               fuente_base="",
+                               fuente_subconjuntada=False,
+                               fuente_tam=nuevo_tam,
+                               modo_texto=estado.modo_texto,
+                               color=estado.color_relleno,
+                               recortado_por=list(clips_activos))
+
             if len(ins.operandos) >= 2:
                 estado.fuente_nombre = str(ins.operandos[0])
                 estado.fuente_tam = _num(ins.operandos[1])

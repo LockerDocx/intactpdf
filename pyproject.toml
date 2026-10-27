@@ -8,8 +8,8 @@ version = "0.1.0"
 description = "Editor de PDF para Linux que no reconstruye el documento"
 readme = "README.md"
 requires-python = ">=3.9"
-license = { text = "MIT OR Apache-2.0" }
-authors = [{ name = "IntactPDF" }]
+license = { text = "AGPL-3.0-or-later" }
+authors = [{ name = "Gerard Morales", email = "LockerDocx@users.noreply.github.com" }]
 keywords = ["pdf", "editor", "linux", "incremental"]
 classifiers = [
     "Development Status :: 3 - Alpha",

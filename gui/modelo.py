@@ -28,6 +28,7 @@ import pypdfium2 as pdfium
 from nucleo.alinear_texto import alinear, chars_de_pagina, filtrar_sinteticos
 from nucleo.editar import (borrar_objeto, escalar_objeto, mover_objeto)
 from nucleo.editar_texto import escala_de_run, plan_editar_texto
+from nucleo.insertar import plan_anadir_texto, plan_anadir_imagen
 from nucleo.fuentes import resolver_fuentes
 from nucleo.geometria import Caja
 from nucleo.guardar import (ErrorGuardado, guardar_pagina_editada,
@@ -558,4 +559,37 @@ class Sesion:
         self._recargar()
         self.ultimo_mensaje = f"Imagen {nombre} reemplazada ({info.bytes_anadidos:,} bytes añadidos de forma incremental)"
         return True
+
+    def anadir_texto(self, texto: str, x: float = 100.0, y: float = 500.0,
+                     tamano: float = 12.0, color: tuple[float, float, float] = (0.0, 0.0, 0.0)) -> bool:
+        """Añade una nueva línea de texto al documento actual de forma incremental."""
+        if not self.ruta or not texto.strip():
+            return False
+        try:
+            plan = plan_anadir_texto(self.datos, self.ruta, self.num_pagina,
+                                     texto, x, y, tamano=tamano, color_rgb=color)
+            self._apuntar("añadir texto")
+            self._aplicar(plan.nuevo_stream, plan.objetos_extra, mensaje=plan.descripcion)
+            return True
+        except Exception as e:
+            self.ultimo_aviso = f"No se pudo añadir el texto: {e}"
+            self.version += 1
+            return False
+
+    def anadir_imagen(self, ruta_imagen: Path | str, x: float = 100.0, y: float = 400.0,
+                      ancho: float = 150.0, alto: float = 100.0) -> bool:
+        """Añade una nueva imagen al documento actual de forma incremental."""
+        if not self.ruta:
+            return False
+        try:
+            plan = plan_anadir_imagen(self.datos, self.ruta, self.num_pagina,
+                                      ruta_imagen, x, y, ancho, alto)
+            self._apuntar(f"añadir imagen {Path(ruta_imagen).name}")
+            self._aplicar(plan.nuevo_stream, plan.objetos_extra, mensaje=plan.descripcion)
+            return True
+        except Exception as e:
+            self.ultimo_aviso = f"No se pudo añadir la imagen: {e}"
+            self.version += 1
+            return False
+
 
