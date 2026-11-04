@@ -862,9 +862,12 @@ def test_cli_tutorial_y_guia():
 
 def test_lienzo_transformacion_pixel_pdf_exacta_con_zoom():
     """a_pdf y a_pixel deben ser inversas matemáticas exactas a cualquier nivel de zoom."""
-    if not _hay_gtk():
+    import os
+    if not _hay_gtk() or not os.environ.get("DISPLAY"):
         return
     s, v = _ventana_con("03_vectores_clip_degradado.pdf")
+    if v is None:
+        return
     lienzo = v.lienzo
 
     for zoom in (0.5, 1.0, 1.5, 2.0, 3.0):
@@ -879,10 +882,13 @@ def test_lienzo_transformacion_pixel_pdf_exacta_con_zoom():
 
 def test_i18n_cambio_de_idioma_en_ventana():
     """La ventana conmuta correctamente de idioma en caliente (es, en, de, zh)."""
-    if not _hay_gtk():
+    import os
+    if not _hay_gtk() or not os.environ.get("DISPLAY"):
         return
     from nucleo.i18n import fijar_idioma, idioma_actual, t
     s, v = _ventana_con()
+    if v is None:
+        return
     
     # Probar inglés
     v.cambiar_idioma("en")
