@@ -30,7 +30,7 @@ set -eu
 LC_ALL=C
 export LC_ALL
 
-VERSION_APP="0.1.0"
+VERSION_APP="0.2.0"
 NOMBRE="IntactPDF"
 
 # De dónde se descargan las cosas cuando este script se ejecuta sin tener el

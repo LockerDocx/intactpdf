@@ -25,7 +25,7 @@ set -eu
 LC_ALL=C
 export LC_ALL
 
-VERSION="0.1.0"
+VERSION="0.2.0"
 ARQUITECTURA="$(uname -m)"
 AQUI="$(cd "$(dirname "$0")/.." && pwd)"
 PUBLICO="$AQUI/dist/publico"
@@ -98,7 +98,7 @@ preparar() {
     else
         rm -f "$PUBLICO"/*.whl
         ( cd "$AQUI" && python3 -m pip wheel --quiet --no-deps \
-            --no-build-isolation -w "$PUBLICO" . ) ||
+            -w "$PUBLICO" . ) ||
             morir "no se pudo construir el paquete"
         # El nombre lo fija quien consume: el instalador busca exactamente este.
         rueda="$(ls "$PUBLICO"/*.whl 2>/dev/null | head -1)"

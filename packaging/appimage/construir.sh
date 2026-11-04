@@ -122,7 +122,8 @@ APPRUN
 chmod +x "$APPDIR/AppRun"
 install -m644 packaging/io.github.lockerdocx.IntactPDF.desktop "$APPDIR/io.github.lockerdocx.IntactPDF.desktop"
 install -m644 packaging/icons/io.github.lockerdocx.IntactPDF.svg "$APPDIR/io.github.lockerdocx.IntactPDF.svg"
-install -m644 packaging/icons/io.github.lockerdocx.IntactPDF.svg "$APPDIR/.DirIcon"
+install -m644 packaging/icons/256x256/io.github.lockerdocx.IntactPDF.png "$APPDIR/io.github.lockerdocx.IntactPDF.png"
+install -m644 packaging/icons/256x256/io.github.lockerdocx.IntactPDF.png "$APPDIR/.DirIcon"
 
 echo "== 6/6  empaquetado"
 mkdir -p dist
@@ -130,11 +131,15 @@ if [ ! -x "$TD/appimagetool" ]; then
     curl -fsSL -o "$TD/appimagetool" "$APPIMAGETOOL"
     chmod +x "$TD/appimagetool"
 fi
+RUNTIME_URL="https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-${ARQ}"
+if [ ! -f "$TD/runtime-${ARQ}" ]; then
+    curl -fsSL -o "$TD/runtime-${ARQ}" "$RUNTIME_URL"
+fi
 SALIDA="$RAIZ/dist/IntactPDF-${VERSION}-${ARQ}.AppImage"
 # --appimage-extract-and-run evita depender de FUSE, que en un contenedor de
 # construcción (y en muchos servidores) no está disponible. El AppImage que
 # produce sí funciona sin FUSE en el equipo del usuario.
-ARCH="$ARQ" "$TD/appimagetool" --appimage-extract-and-run \
+ARCH="$ARQ" "$TD/appimagetool" --appimage-extract-and-run --runtime-file "$TD/runtime-${ARQ}" \
     "$APPDIR" "$SALIDA" >"$TD/appimagetool.log" 2>&1 || {
         echo "appimagetool falló; últimas líneas:" >&2
         tail -20 "$TD/appimagetool.log" >&2
