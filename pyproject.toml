@@ -4,7 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "intactpdf"
-version = "0.1.0"
+# 0.2.0: versión con las mejoras descritas en MEJORAS.md (bug de --pagina,
+# preludio seguro, EditorPagina, fidelidad estricta en guardado, comando diff)
+version = "0.2.0"
 description = "Editor de PDF para Linux que no reconstruye el documento"
 readme = "README.md"
 requires-python = ">=3.9"

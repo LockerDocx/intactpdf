@@ -32,10 +32,12 @@ import pikepdf
 import pypdfium2 as pdfium
 
 from .alinear_texto import alinear, chars_de_pagina
-from .editar import borrar_objeto, escalar_objeto, mover_objeto
+from .editar import (borrar_objeto, caja_tras_escalar, caja_tras_mover,
+                     escalar_objeto, mover_objeto)
 from .editar_texto import plan_editar_texto
 from .fuentes import resolver_fuentes
-from .guardar import ErrorGuardado, guardar_pagina_editada
+from .guardar import (ErrorGuardado, comparar_documentos,
+                      guardar_pagina_editada)
 from .objetos import Imagen, Sombreado, TextoRun, Vector, extraer_objetos
 
 # Códigos de salida: distinguir "no se pudo" de "no se debe" importa en un
@@ -364,12 +366,28 @@ def _destino(args, origen: Path) -> tuple[Path, bool]:
 
 
 def _guardar(origen: Path, destino: Path, datos: bytes, objetos: dict,
-             contenido_original: bytes) -> int:
-    """Escribe y verifica la propiedad que define al proyecto."""
+             contenido_original: bytes, num_pagina: int = 0,
+             zonas: list | None = None) -> int:
+    """Escribe y verifica la propiedad que define al proyecto.
+
+    MODIFICADO (ver MEJORAS.md):
+      - `num_pagina`: antes se guardaba SIEMPRE en la página 0, así que
+        `--pagina N` escribía el contenido editado de la página N en los
+        streams de la página 0 (la verificación de tinta lo solía cazar,
+        pero el guardado estaba roto para cualquier página que no fuera
+        la primera).
+      - `zonas`: rectángulos editados en puntos PDF; si se pasan, además de
+        la comprobación de tinta se exige que ningún píxel FUERA de esas
+        zonas haya cambiado, o el guardado se descarta.
+    """
     backup = destino.with_suffix(destino.suffix + ".bak")
     if destino == origen:
         shutil.copy2(origen, backup)
-    info = guardar_pagina_editada(origen, destino, 0, [datos], objetos)
+    info = guardar_pagina_editada(origen, destino, num_pagina, [datos],
+                                  objetos, zonas_editadas=zonas)
+    if zonas:
+        print(f"      fidelidad fuera de la zona editada: 0 píxeles "
+              f"alterados")
     if not info.prefijo_intacto:
         print("  ERROR: el fichero guardado NO empieza por el original.", file=sys.stderr)
         print("  El guardado incremental no se ha podido verificar; no se puede", file=sys.stderr)
@@ -412,7 +430,9 @@ def cmd_delete(args) -> int:
         if args.dry_run:
             print("      --dry-run: no se escribe nada")
             return EXITO
-        return _guardar(origen, destino, nuevos, extras, d.datos)
+        zonas = [o.caja.como_tupla()] if o.caja is not None else None
+        return _guardar(origen, destino, nuevos, extras, d.datos,
+                        num_pagina=args.pagina, zonas=zonas)
 
 
 def cmd_move(args) -> int:
@@ -430,7 +450,12 @@ def cmd_move(args) -> int:
         if args.dry_run:
             print("      --dry-run: no se escribe nada")
             return EXITO
-        return _guardar(origen, destino, nuevos, {}, d.datos)
+        zonas = None
+        if o.caja is not None:
+            destino_caja = caja_tras_mover(o, args.dx, args.dy)
+            zonas = [o.caja.como_tupla(), destino_caja.como_tupla()]
+        return _guardar(origen, destino, nuevos, {}, d.datos,
+                        num_pagina=args.pagina, zonas=zonas)
 
 
 def cmd_scale(args) -> int:
@@ -457,7 +482,10 @@ def cmd_scale(args) -> int:
         if args.dry_run:
             print("      --dry-run: no se escribe nada")
             return EXITO
-        return _guardar(origen, destino, nuevos, {}, d.datos)
+        zonas = [o.caja.como_tupla(),
+                 caja_tras_escalar(o, fx, fy, centro).como_tupla()]
+        return _guardar(origen, destino, nuevos, {}, d.datos,
+                        num_pagina=args.pagina, zonas=zonas)
 
 
 def cmd_edit(args) -> int:
@@ -504,7 +532,14 @@ def cmd_edit(args) -> int:
         if args.dry_run:
             print("\n      --dry-run: no se escribe nada")
             return EXITO
-        return _guardar(origen, destino, plan.contenido, plan.objetos, d.datos)
+        zonas = None
+        if o.caja is not None:
+            # si el texto nuevo es más ancho, pinta más allá de su caja
+            # original: la zona cubre también ese desborde
+            extra = max(0.0, inf.delta_en_puntos) + 2.0
+            zonas = [(o.caja.x0, o.caja.y0, o.caja.x1 + extra, o.caja.y1)]
+        return _guardar(origen, destino, plan.contenido, plan.objetos,
+                        d.datos, num_pagina=args.pagina, zonas=zonas)
 
 
 def cmd_check(args) -> int:
@@ -566,6 +601,51 @@ def cmd_check(args) -> int:
         return ERROR
     print()
     return EXITO
+
+
+def cmd_diff(args) -> int:
+    """Compara dos PDFs píxel a píxel: el «¿cambió algo más?» del proyecto.
+
+    NUEVO (ver MEJORAS.md): trae al CLI instalable la misma medición que el
+    arnés de aceptación (tools/test_aceptacion.py), para que cualquiera pueda
+    comprobar la promesa del editor sobre sus propios documentos.
+    """
+    antes, despues = Path(args.antes), Path(args.despues)
+    for r in (antes, despues):
+        if not r.exists():
+            print(f"  no existe: {r}", file=sys.stderr)
+            return ERROR
+    print(f"\n  {antes.name}  vs  {despues.name}")
+    print(f"  render a {args.escala:g}x, tolerancia {args.tolerancia} por canal")
+    try:
+        filas = comparar_documentos(antes, despues, max_paginas=args.paginas,
+                                    escala=args.escala,
+                                    tolerancia=args.tolerancia)
+    except Exception as e:
+        print(f"  no se pudieron comparar: {type(e).__name__}: {e}",
+              file=sys.stderr)
+        return ERROR
+
+    todo_identico = True
+    for f in filas:
+        if f["identica"]:
+            print(f"      página {f['pagina'] + 1:3d}: idéntica "
+                  f"(0 de {f['muestras']:,} muestras)")
+        else:
+            todo_identico = False
+            if f["motivo"]:
+                print(f"      página {f['pagina'] + 1:3d}: {f['motivo']}")
+            else:
+                print(f"      página {f['pagina'] + 1:3d}: "
+                      f"{f['distintas']:,} de {f['muestras']:,} muestras "
+                      f"distintas ({100 * f['fraccion']:.3f} %)")
+    print()
+    if todo_identico:
+        print("      resultado: IDÉNTICOS (visualmente, dentro de la "
+              "tolerancia)")
+        return EXITO
+    print("      resultado: HAY DIFERENCIAS visuales")
+    return ERROR
 
 
 def cmd_compact(args) -> int:
@@ -756,6 +836,18 @@ def construir_parser() -> argparse.ArgumentParser:
         p.add_argument("archivo")
         p.add_argument("--json", action="store_true")
         p.set_defaults(func=fn)
+
+    p = sub.add_parser("diff", help="comparar dos PDFs píxel a píxel "
+                                    "(¿cambió algo más?)")
+    p.add_argument("antes", help="PDF original")
+    p.add_argument("despues", help="PDF editado")
+    p.add_argument("--paginas", type=int, default=12,
+                   help="máximo de páginas a comparar (12 por omisión)")
+    p.add_argument("--escala", type=float, default=2.0,
+                   help="factor de render (2.0 ≈ 144 dpi)")
+    p.add_argument("--tolerancia", type=int, default=12,
+                   help="diferencia por canal admitida (12 por omisión)")
+    p.set_defaults(func=cmd_diff)
 
     p = sub.add_parser("compact", help="eliminar historial previo y compactar (redacción segura)")
     p.add_argument("archivo")

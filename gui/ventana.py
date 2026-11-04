@@ -182,8 +182,12 @@ class Lienzo(Gtk.DrawingArea):
             if self._arrastrando:
                 dx = self._arrastre_actual[0] - self._arrastre_ini[0]
                 dy = self._arrastre_actual[1] - self._arrastre_ini[1]
-                caja = Caja(caja.x0 + dx, caja.y0 + dy,
-                            caja.x1 + dx, caja.y1 + dy)
+                x0, y0 = self.a_pdf(0, 0)
+                x1, y1 = self.a_pdf(dx, dy)
+                pdf_dx = x1 - x0
+                pdf_dy = y1 - y0
+                caja = Caja(caja.x0 + pdf_dx, caja.y0 + pdf_dy,
+                            caja.x1 + pdf_dx, caja.y1 + pdf_dy)
             self._rect(ctx, caja)
             ctx.set_source_rgb(*COLOR_SELECCION)
             ctx.set_line_width(2.0)

@@ -8,6 +8,15 @@ desplazamientos de una edición no invaliden las posiciones de las siguientes.
 Por qué importa: cada byte que no se toca es un byte que no puede cambiar de
 significado. Un editor que reconstruye el stream entero es exactamente el
 problema que este proyecto existe para resolver.
+
+MODIFICADO (2026-10, ver MEJORAS.md):
+  - El preludio de borrado ya no se elimina: se REEMITE después de la región
+    borrada. Borrarlo cambiaba el estado gráfico que el objeto SIGUIENTE ya
+    había heredado en el render original (p. ej. un color compartido).
+  - `aplicar_ediciones` rechaza rangos solapados: casi siempre son síntoma
+    de calcular ediciones sobre snapshots distintos del stream.
+  - Nueva clase `EditorPagina`, que encadena ediciones cumpliendo la regla
+    de oro: todas se calculan sobre los offsets del MISMO stream original.
 """
 from __future__ import annotations
 
@@ -118,22 +127,40 @@ def _preludio(contenido: ContenidoPagina, objeto: Objeto) -> int | None:
 
 
 def edicion_borrar(contenido: ContenidoPagina, objeto: Objeto,
-                   incluir_preludio: bool = True) -> Edicion:
+                   incluir_preludio: bool = True,
+                   datos: bytes | None = None) -> Edicion:
     """Sustituye el objeto por espacios en blanco: misma longitud, sin objeto.
 
     Se rellena con espacios en vez de borrar los bytes para que las longitudes
     del stream no bailen y el diff sea mínimo.
+
+    Sobre el preludio (los operadores de estado que preceden al objeto):
+    quitarlo y ya está NO es seguro. Esos operadores —un color, un grosor—
+    ya estaban vigentes cuando se pintó el objeto SIGUIENTE en el documento
+    original, así que borrarlos puede cambiar el aspecto de lo que viene
+    detrás: exactamente lo que este editor promete no hacer. Con `datos` se
+    reemite el preludio AL FINAL de la región borrada: el stream queda igual
+    de largo, el objeto desaparece y el estado que heredaba el resto de la
+    página no cambia. Sin `datos` se mantiene el comportamiento histórico
+    (el preludio se elimina), que solo es seguro si el objeto siguiente
+    vuelve a fijar todo su estado.
     """
     if not objeto.instrucciones:
         raise ValueError("el objeto no tiene instrucciones que borrar")
-    inicio = objeto.instrucciones[0].inicio
+    primero = objeto.instrucciones[0].inicio
+    inicio = primero
     fin = objeto.instrucciones[-1].fin
+    pre = None
     if incluir_preludio:
         pre = _preludio(contenido, objeto)
         if pre is not None:
             inicio = pre
     if inicio < 0 or fin <= inicio:
         raise ValueError("rango inválido para borrar")
+    if pre is not None and datos is not None:
+        preludio = datos[pre:primero]
+        reemplazo = b" " * (fin - inicio - len(preludio)) + preludio
+        return Edicion(inicio, fin, reemplazo)
     return Edicion(inicio, fin, b" " * (fin - inicio))
 
 
@@ -152,8 +179,7 @@ def _dentro_de_texto(contenido: ContenidoPagina, offset: int) -> bool:
         if ins.op == "BT":
             profundidad += 1
         elif ins.op == "ET":
-            profundidad = max(0, profundidad - 1) - 1 if False else profundidad - 1
-            profundidad = max(0, profundidad)
+            profundidad = max(0, profundidad - 1)
     return profundidad > 0
 
 
@@ -260,7 +286,22 @@ def aplicar_ediciones(datos: bytes, ediciones: list[Edicion]) -> bytes:
     desplazaría los offsets de todas las siguientes y se escribiría en el sitio
     equivocado. Ordenar por offset descendente evita el problema sin necesidad
     de recalcular nada.
+
+    Se rechazan ediciones que se solapan. Dos rangos que pisan el mismo byte
+    casi nunca son deliberados: el caso típico es calcular cada edición sobre
+    un snapshot DISTINTO del stream (por ejemplo, sobre el resultado de la
+    edición anterior sin volver a parsear), y entonces los offsets apuntan a
+    objetos equivocados y el stream sale corrompido en silencio. Mejor un
+    error claro aquí que un PDF roto que hay que depurar después.
     """
+    ordenadas = sorted(ediciones, key=lambda e: (e.inicio, e.fin))
+    for a, b in zip(ordenadas, ordenadas[1:]):
+        if a.fin > b.inicio:
+            raise ValueError(
+                f"ediciones solapadas: [{a.inicio}, {a.fin}) pisa "
+                f"[{b.inicio}, {b.fin}). Todas las ediciones de una misma "
+                f"pasada deben calcularse sobre los offsets del MISMO stream; "
+                f"si necesitas encadenar varias, usa EditorPagina")
     out = datos
     for ed in sorted(ediciones, key=lambda e: e.inicio, reverse=True):
         if ed.inicio < 0 or ed.fin > len(out) or ed.inicio > ed.fin:
@@ -274,7 +315,75 @@ def aplicar_ediciones(datos: bytes, ediciones: list[Edicion]) -> bytes:
 def borrar_objeto(datos: bytes, contenido: ContenidoPagina, objeto: Objeto,
                   incluir_preludio: bool = True) -> bytes:
     return aplicar_ediciones(datos, [edicion_borrar(contenido, objeto,
-                                                    incluir_preludio)])
+                                                    incluir_preludio,
+                                                    datos=datos)])
+
+
+# ---------------------------------------------------------------------------
+# Encadenar ediciones sin romper la regla de oro
+# ---------------------------------------------------------------------------
+
+class EditorPagina:
+    """Encadena varias ediciones sobre UNA página en una sola pasada.
+
+    La regla de oro del modelo de edición: todas las ediciones se calculan
+    sobre los offsets del MISMO stream original y se aplican de una vez, de
+    atrás hacia delante. Lo que NO se puede hacer es esto:
+
+        datos2 = mover_objeto(datos, contenido, img, 50, 0)
+        datos3 = borrar_objeto(datos2, contenido, texto)   # ¡offsets viejos!
+
+        # mover insertó bytes al principio del stream: todos los offsets
+        # posteriores se desplazaron, y `borrar` escribe donde no debe.
+        # Medido sobre el corpus: se borra la GEOMETRÍA de un vector y el
+        # texto siguiente hereda el color del anterior.
+
+    Con EditorPagina la trampa no existe, porque el stream y el contenido se
+    guardan una vez y todas las ediciones se calculan contra ese snapshot:
+
+        ed = EditorPagina(datos, contenido)
+        ed.mover(img, 50, 0).borrar(texto)
+        datos2 = ed.aplicar()
+
+    Si después hacen falta los objetos del stream YA editado, hay que volver
+    a llamar a `extraer_objetos` con los bytes nuevos: los objetos viejos
+    siguen apuntando al snapshot original.
+    """
+
+    def __init__(self, datos: bytes, contenido: ContenidoPagina):
+        self._datos = datos
+        self._contenido = contenido
+        self._ediciones: list[Edicion] = []
+        self._borrados: set[int] = set()
+
+    def _comprobar_no_borrado(self, objeto: Objeto) -> None:
+        if id(objeto) in self._borrados:
+            raise ValueError("ese objeto ya se ha borrado en esta sesión: "
+                             "editarlo dos veces es casi seguro un error")
+
+    def borrar(self, objeto: Objeto, incluir_preludio: bool = True) -> "EditorPagina":
+        self._comprobar_no_borrado(objeto)
+        self._borrados.add(id(objeto))
+        self._ediciones.append(edicion_borrar(self._contenido, objeto,
+                                              incluir_preludio,
+                                              datos=self._datos))
+        return self
+
+    def mover(self, objeto: Objeto, dx: float, dy: float) -> "EditorPagina":
+        self._comprobar_no_borrado(objeto)
+        self._ediciones.extend(edicion_mover(self._contenido, objeto, dx, dy))
+        return self
+
+    def escalar(self, objeto: Objeto, escala_x: float, escala_y: float,
+                centro: tuple[float, float]) -> "EditorPagina":
+        self._comprobar_no_borrado(objeto)
+        self._ediciones.extend(edicion_escalar(self._contenido, objeto,
+                                               escala_x, escala_y, centro))
+        return self
+
+    def aplicar(self) -> bytes:
+        """Devuelve el content stream con todas las ediciones aplicadas."""
+        return aplicar_ediciones(self._datos, self._ediciones)
 
 
 def mover_objeto(datos: bytes, contenido: ContenidoPagina, objeto: Objeto,

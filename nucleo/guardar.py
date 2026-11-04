@@ -318,6 +318,149 @@ def verificar_que_se_ve(ruta_original: str | Path, ruta_salida: str | Path,
 
 
 # ---------------------------------------------------------------------------
+# Verificación estricta: ni un píxel fuera de la zona editada (MODIFICADO, ver
+# MEJORAS.md). Es la promesa del proyecto hecha guarda en el momento de
+# guardar, no solo en el arnés de tests.
+# ---------------------------------------------------------------------------
+
+def _render_pagina(ruta: str | Path, num_pagina: int, escala: float):
+    """(buffer, (ancho, alto, canales, paso, ancho_pt, alto_pt)) o (None, None)."""
+    import pypdfium2 as pdfium
+    doc = pdfium.PdfDocument(str(ruta))
+    try:
+        if num_pagina >= len(doc):
+            return None, None
+        pag = doc[num_pagina]
+        ancho_pt, alto_pt = pag.get_size()
+        bmp = pag.render(scale=escala)
+        return (bytes(bmp.buffer),
+                (bmp.width, bmp.height, bmp.n_channels, bmp.stride,
+                 ancho_pt, alto_pt))
+    finally:
+        doc.close()
+
+
+def verificar_fidelidad(ruta_antes: str | Path, ruta_despues: str | Path,
+                        num_pagina: int, zonas_pt=(),
+                        escala: float = 1.0, tolerancia: int = 12,
+                        paso: int = 2) -> str | None:
+    """Compara píxel a píxel la misma página antes y después de editar.
+
+    `zonas_pt` son rectángulos (x0, y0, x1, y1) en puntos PDF que se EXCLUYEN
+    de la comparación: es donde el usuario ha editado. Fuera de ahí no puede
+    cambiar nada; si cambia, la edición tuvo efectos colaterales (estado
+    gráfico heredado, un `Q` en mal sitio, un clip path tocado...) y el
+    guardado se debe rechazar.
+
+    Es la versión instalable del arnés de aceptación del proyecto
+    (tools/test_aceptacion.py), sin numpy ni Pillow: muestreo con el mismo
+    criterio que `_tinta`. Devuelve None si la fidelidad se cumple, o el
+    motivo en lenguaje claro si no.
+    """
+    antes, meta_a = _render_pagina(ruta_antes, num_pagina, escala)
+    despues, meta_d = _render_pagina(ruta_despues, num_pagina, escala)
+    if meta_a is None or meta_d is None:
+        return None     # página inexistente en ambos: nada que comparar
+    if meta_a[:4] != meta_d[:4]:
+        return (f"la página cambió de tamaño de píxel al guardar "
+                f"({meta_a[0]}x{meta_a[1]} -> {meta_d[0]}x{meta_d[1]})")
+    ancho, alto, canales, paso_bytes, _, alto_pt = meta_a
+
+    margen = 2.0 / escala  # antialiasing en el borde de la zona editada
+    zonas_px = []
+    for (x0, y0, x1, y1) in zonas_pt:
+        zx0 = max(0, int((x0 - margen) * escala))
+        zx1 = min(ancho, int((x1 + margen) * escala + 1))
+        # el render tiene el origen ARRIBA; el PDF, abajo
+        zy0 = max(0, int((alto_pt - y1 - margen) * escala))
+        zy1 = min(alto, int((alto_pt - y0 + margen) * escala + 1))
+        zonas_px.append((zx0, zy0, zx1, zy1))
+
+    def en_zona(px: int, py: int) -> bool:
+        for zx0, zy0, zx1, zy1 in zonas_px:
+            if zx0 <= px < zx1 and zy0 <= py < zy1:
+                return True
+        return False
+
+    distintos = 0
+    for y in range(0, alto, paso):
+        base = y * paso_bytes
+        for x in range(0, ancho, paso):
+            if en_zona(x, y):
+                continue
+            i = base + x * canales
+            if (abs(antes[i] - despues[i]) > tolerancia
+                    or abs(antes[i + 1] - despues[i + 1]) > tolerancia
+                    or abs(antes[i + 2] - despues[i + 2]) > tolerancia):
+                distintos += 1
+                if distintos > 25:
+                    return (f"hay píxeles alterados FUERA de la zona editada "
+                            f"(más de {distintos} muestras): la edición tuvo "
+                            f"efectos colaterales. El guardado se descarta y "
+                            f"el original no se ha tocado")
+    return None
+
+
+def comparar_documentos(ruta_a: str | Path, ruta_b: str | Path,
+                        max_paginas: int = 12, escala: float = 2.0,
+                        tolerancia: int = 12, paso: int = 1) -> list[dict]:
+    """Diferencia visual entre dos PDFs, página a página.
+
+    Es el «¿cambió algo más?» en forma de comando: renderiza ambos con pdfium
+    y cuenta las muestras que difieren por encima de la tolerancia. Sin numpy
+    ni Pillow, para que funcione en la instalación mínima.
+    """
+    import pypdfium2 as pdfium
+
+    resultado = []
+    doc_a = pdfium.PdfDocument(str(ruta_a))
+    doc_b = pdfium.PdfDocument(str(ruta_b))
+    try:
+        n = min(len(doc_a), len(doc_b), max_paginas)
+        for i in range(n):
+            pag_a, pag_b = doc_a[i], doc_b[i]
+            ta, tb = pag_a.get_size(), pag_b.get_size()
+            if abs(ta[0] - tb[0]) > 1 or abs(ta[1] - tb[1]) > 1:
+                resultado.append({"pagina": i, "identica": False,
+                                  "motivo": f"tamaño distinto: {ta} vs {tb}",
+                                  "muestras": 0, "distintas": 0,
+                                  "fraccion": 1.0})
+                continue
+            ba, bb = pag_a.render(scale=escala), pag_b.render(scale=escala)
+            da, db = bytes(ba.buffer), bytes(bb.buffer)
+            if (ba.width, ba.height, ba.stride) != (bb.width, bb.height, bb.stride):
+                resultado.append({"pagina": i, "identica": False,
+                                  "motivo": "geometría de render distinta",
+                                  "muestras": 0, "distintas": 0,
+                                  "fraccion": 1.0})
+                continue
+            distintas = muestras = 0
+            canales, paso_bytes = ba.n_channels, ba.stride
+            for y in range(0, ba.height, paso):
+                base = y * paso_bytes
+                for x in range(0, ba.width, paso):
+                    j = base + x * canales
+                    muestras += 1
+                    if (abs(da[j] - db[j]) > tolerancia
+                            or abs(da[j + 1] - db[j + 1]) > tolerancia
+                            or abs(da[j + 2] - db[j + 2]) > tolerancia):
+                        distintas += 1
+            fraccion = distintas / muestras if muestras else 0.0
+            resultado.append({"pagina": i, "identica": distintas == 0,
+                              "motivo": "", "muestras": muestras,
+                              "distintas": distintas, "fraccion": fraccion})
+        if len(doc_a) != len(doc_b):
+            resultado.append({"pagina": -1, "identica": False,
+                              "motivo": f"número de páginas distinto: "
+                                        f"{len(doc_a)} vs {len(doc_b)}",
+                              "muestras": 0, "distintas": 0, "fraccion": 1.0})
+    finally:
+        doc_a.close()
+        doc_b.close()
+    return resultado
+
+
+# ---------------------------------------------------------------------------
 # Puente desde el editor
 # ---------------------------------------------------------------------------
 
@@ -339,6 +482,7 @@ def guardar_pagina_editada(
     objetos_extra: dict[tuple[int, int], bytes] | None = None,
     verificar: bool = True,
     crear_backup: bool = True,
+    zonas_editadas: list[tuple[float, float, float, float]] | None = None,
 ) -> InformeGuardado:
     """Guarda una página con sus streams de contenido reemplazados.
 
@@ -359,6 +503,13 @@ def guardar_pagina_editada(
     pasa, crea una copia de seguridad `archivo.pdf~` y reemplaza el original
     de forma atómica. Si la verificación falla, el archivo temporal se borra
     y el original permanece intacto.
+
+    `zonas_editadas` (MODIFICADO, ver MEJORAS.md): rectángulos
+    (x0, y0, x1, y1) en puntos PDF donde el usuario ha editado. Si se pasan,
+    además de la comprobación de tinta se hace una comparación píxel a píxel
+    del antes y el después: cualquier cambio FUERA de esas zonas descarta el
+    guardado. Es la promesa del proyecto («nada más ha cambiado») verificada
+    en cada escritura, no solo en los tests.
     """
     ruta_original = Path(ruta_original)
     ruta_salida = Path(ruta_salida)
@@ -404,6 +555,12 @@ def guardar_pagina_editada(
                     f"no escribir nada a escribir algo que no se ve. Pasa con "
                     f"documentos con estructuras complejas o linearizados. "
                     f"El original no se ha tocado.")
+        if verificar and zonas_editadas:
+            problema = verificar_fidelidad(ruta_original, tmp_salida,
+                                           num_pagina, zonas_editadas)
+            if problema:
+                tmp_salida.unlink(missing_ok=True)
+                raise ErrorGuardado(problema)
 
         if es_mismo_archivo and crear_backup:
             backup = ruta_salida.with_name(f"{ruta_salida.name}~")
